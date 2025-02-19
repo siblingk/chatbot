@@ -3,19 +3,184 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --chat--color-primary: #007aff;
+  --chat--color-primary-shade-50: #0066cc;
+  --chat--color-primary-shade-100: #004999;
+  --chat--color-secondary: #34c759;
+  --chat--color-secondary-shade-50: #30b54f;
+  --chat--color-white: #ffffff;
+  --chat--color-light: #f5f5f7;
+  --chat--color-light-shade-50: #e8e8ed;
+  --chat--color-light-shade-100: #d2d2d7;
+  --chat--color-medium: #86868b;
+  --chat--color-dark: #1d1d1f;
+  --chat--color-disabled: #86868b;
+  --chat--color-typing: #1d1d1f;
+
+  --chat--font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --chat--spacing: 1.25rem;
+  --chat--border-radius: 1rem;
+  --chat--transition-duration: 0.2s;
+
+  --chat--window--width: 100vw;
+  --chat--window--height: 100vh;
+  --chat--window--max-width: 1200px;
+
+  --chat--header-height: auto;
+  --chat--header--padding: var(--chat--spacing);
+  --chat--header--background: var(--chat--color-white);
+  --chat--header--color: var(--chat--color-dark);
+  --chat--header--border-bottom: 1px solid var(--chat--color-light-shade-50);
+  --chat--heading--font-size: 1.5rem;
+  --chat--heading--font-weight: 600;
+  --chat--subtitle--font-size: 1rem;
+  --chat--subtitle--line-height: 1.5;
+
+  --chat--textarea--height: 60px;
+  --chat--textarea--background: var(--chat--color-light);
+  --chat--textarea--border-radius: 1rem;
+  --chat--textarea--padding: 1rem;
+  --chat--textarea--font-size: 1rem;
+  --chat--textarea--box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  --chat--message--font-size: 1rem;
+  --chat--message--padding: 1rem 1.25rem;
+  --chat--message--border-radius: 1.25rem;
+  --chat--message-line-height: 1.5;
+  --chat--message--max-width: 80%;
+  --chat--message--bot--background: var(--chat--color-light);
+  --chat--message--bot--color: var(--chat--color-dark);
+  --chat--message--bot--border: none;
+  --chat--message--user--background: var(--chat--color-primary);
+  --chat--message--user--color: var(--chat--color-white);
+  --chat--message--user--border: none;
+  --chat--message--pre--background: rgba(0, 0, 0, 0.03);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --chat--color-white: #1d1d1f;
+  --chat--color-light: #2c2c2e;
+  --chat--color-light-shade-50: #3a3a3c;
+  --chat--color-light-shade-100: #48484a;
+  --chat--color-medium: #98989d;
+  --chat--color-dark: #f5f5f7;
+  --chat--color-disabled: #98989d;
+  --chat--color-typing: #f5f5f7;
+  --chat--message--pre--background: rgba(255, 255, 255, 0.03);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+#n8n-chat {
+  font-family: var(--chat--font-family);
+  max-width: var(--chat--window--max-width);
+  margin: 0 auto;
+  background: var(--chat--color-white);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  scroll-behavior: smooth;
+}
+
+.chat-input-container {
+  padding: 1rem;
+  border-top: 1px solid var(--chat--color-light-shade-50);
+  background: var(--chat--color-white);
+}
+
+/* Estilos para dispositivos móviles */
+@media (max-width: 768px) {
+  :root {
+    --chat--message--max-width: 90%;
+    --chat--message--padding: 0.875rem 1rem;
+    --chat--message--font-size: 0.9375rem;
+  }
+}
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 24 9.8% 10%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 20 14.3% 4.1%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 60 9.1% 97.8%;
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 60 9.1% 97.8%;
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 60 9.1% 97.8%;
+    --primary: 60 9.1% 97.8%;
+    --primary-foreground: 24 9.8% 10%;
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 60 9.1% 97.8%;
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 60 9.1% 97.8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 24 5.7% 82.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

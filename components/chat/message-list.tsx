@@ -17,27 +17,69 @@ export function MessageList({
   workshopId,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showSecondMessage, setShowSecondMessage] = useState(false);
   const [welcomeLoaded, setWelcomeLoaded] = useState(false);
 
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      const scrollElement = scrollRef.current;
+      scrollElement.scrollTo({
+        top: scrollElement.scrollHeight,
+        behavior: "auto",
+      });
+    }
+  };
+
+  // Configurar el observador de mutaciones para detectar cambios en el contenido
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new MutationObserver(() => {
+      scrollToBottom();
+    });
+
+    observer.observe(containerRef.current, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Scroll cuando cambian los mensajes o el estado de carga
+  useEffect(() => {
+    scrollToBottom();
+    // Doble check para asegurar que el scroll llegue al final
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
+  }, [messages, isLoading, showSecondMessage]);
+
+  // Scroll periódico mientras está cargando
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const interval = setInterval(scrollToBottom, 100);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   useEffect(() => {
     if (welcomeLoaded) {
-      setTimeout(() => setShowSecondMessage(true), 500);
+      setTimeout(() => {
+        setShowSecondMessage(true);
+        scrollToBottom();
+      }, 500);
     }
   }, [welcomeLoaded]);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  }, [messages, isLoading, showSecondMessage]);
-
   return (
-    <div className="h-full overflow-y-auto" ref={scrollRef}>
-      <div className="container max-w-3xl mx-auto space-y-4 p-4 pb-6">
+    <div className="h-full overflow-y-auto relative" ref={scrollRef}>
+      <div
+        className="container max-w-3xl mx-auto space-y-4 p-4 pb-20"
+        ref={containerRef}
+      >
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key="welcome"
@@ -45,6 +87,7 @@ export function MessageList({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
+            onAnimationComplete={() => scrollToBottom()}
           >
             <WelcomeMessage
               workshopId={workshopId}
@@ -59,6 +102,7 @@ export function MessageList({
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
               className="flex justify-start mt-4"
+              onAnimationComplete={() => scrollToBottom()}
             >
               <div className="max-w-[85%] rounded-2xl px-4 py-2 bg-muted">
                 <p className="whitespace-pre-wrap break-words">
@@ -79,6 +123,7 @@ export function MessageList({
                 "flex",
                 message.isUser ? "justify-end" : "justify-start"
               )}
+              onAnimationComplete={() => scrollToBottom()}
             >
               <motion.div
                 layout
@@ -102,6 +147,7 @@ export function MessageList({
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
               className="flex justify-start"
+              onAnimationComplete={() => scrollToBottom()}
             >
               <div className="max-w-[85%] rounded-2xl px-4 py-2 bg-muted">
                 <Loader />

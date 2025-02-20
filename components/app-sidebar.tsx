@@ -58,8 +58,6 @@ export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
   const { isAdmin } = useUserRole();
 
-  console.log(isAdmin);
-
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>

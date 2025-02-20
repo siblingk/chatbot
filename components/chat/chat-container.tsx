@@ -12,7 +12,7 @@ import {
   clearMessages,
 } from "@/app/actions/chat";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 
@@ -81,8 +81,8 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
   }
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto pt-10">
-      <div className="flex justify-end px-4 mb-4">
+    <div className="flex flex-col h-[calc(100vh-40px)] overflow-hidden">
+      <div className="flex justify-end px-4">
         <Button
           variant="ghost"
           size="sm"
@@ -92,31 +92,19 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
             setMessages([]);
           }}
         >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Limpiar chat
+          <Trash2 className="h-4 w-4 stroke-red-400" />
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-hidden">
         <MessageList
           messages={messages}
           isLoading={isLoading || isTyping}
           workshopId={workshopId}
         />
-        <AnimatePresence>
-          {isTyping && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="px-4 py-2 text-sm text-gray-500"
-            >
-              El asistente está escribiendo...
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-
-      <MessageInput onSubmit={handleSubmit} />
+      <div className="mt-auto">
+        <MessageInput onSubmit={handleSubmit} />
+      </div>
     </div>
   );
 }

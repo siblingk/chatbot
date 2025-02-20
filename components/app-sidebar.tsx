@@ -39,6 +39,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const items = [
   {
@@ -51,6 +52,9 @@ const items = [
     url: "/chat",
     icon: MessageSquare,
   },
+];
+
+const adminItems = [
   {
     title: "Configuración",
     url: "/settings",
@@ -60,11 +64,14 @@ const items = [
 
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
+  const { isAdmin } = useUserRole();
   const supabase = createClient();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
+
+  console.log(user);
 
   return (
     <Sidebar collapsible="icon">
@@ -114,6 +121,17 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {isAdmin &&
+                adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <a href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

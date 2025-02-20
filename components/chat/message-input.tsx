@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Forward } from "lucide-react";
@@ -17,6 +17,11 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Mantener el foco en el input
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!message.trim()) return;
@@ -30,6 +35,10 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
     // Procesar el envío
     startTransition(async () => {
       await onSubmit(formData);
+      // Restaurar el foco después de enviar el mensaje
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
     });
   };
 
@@ -62,6 +71,7 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
               disabled={isPending}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
+              autoFocus
             />
             <AnimatePresence mode="wait">
               {isPending ? (

@@ -1,55 +1,29 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { getUserRole } from "@/app/actions/auth";
 import { AppRole } from "@/types/auth";
 
 export function useUserRole() {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+
+  console.log(role);
 
   useEffect(() => {
-    async function getUserRole() {
+    async function fetchUserRole() {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) {
-          setRole(null);
-          return;
-        }
-
-        const { data: userData, error } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-
-        if (error) {
-          console.error("Error fetching user role:", error);
-          setRole(null);
-          return;
-        }
-
-        setRole(userData?.role || null);
+        const { role: userRole } = await getUserRole();
+        setRole(userRole);
       } catch (error) {
-        console.error("Error in getUserRole:", error);
+        console.error("Error in useUserRole:", error);
         setRole(null);
       } finally {
         setLoading(false);
       }
     }
 
-    getUserRole();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      getUserRole();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    fetchUserRole();
   }, []);
 
   return { role, loading, isAdmin: role === "admin" };

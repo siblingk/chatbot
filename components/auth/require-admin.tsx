@@ -18,10 +18,6 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
     }
   }, [user, isAdmin, authLoading, roleLoading, router]);
 
-  if (authLoading || roleLoading) {
-    return <div>Cargando...</div>;
-  }
-
   if (!user || !isAdmin) {
     return null;
   }

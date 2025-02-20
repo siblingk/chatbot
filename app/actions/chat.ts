@@ -50,7 +50,25 @@ export async function updateMessages(messages: Message[]): Promise<void> {
   revalidatePath("/");
 }
 
+export async function clearMessages(): Promise<void> {
+  const cookiesList = await cookies();
+  cookiesList.set({
+    name: "chatMessages",
+    value: "[]",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 60 * 60 * 24 * 7, // 7 días
+  });
+  revalidatePath("/");
+}
+
 export async function sendMessage(sessionId: string, message: string) {
+  const WEBHOOK_URL = process.env.WEBHOOK_URL;
+  if (!WEBHOOK_URL) {
+    throw new Error("WEBHOOK_URL no está definida en las variables de entorno");
+  }
+
   try {
     const webhookRequest: WebhookRequest = {
       sessionId,
@@ -65,6 +83,10 @@ export async function sendMessage(sessionId: string, message: string) {
       },
       body: JSON.stringify(webhookRequest),
     });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
 
     const data = await response.text();
     let botResponse = "";
@@ -82,7 +104,6 @@ export async function sendMessage(sessionId: string, message: string) {
       botResponse = data;
     }
 
-    revalidatePath("/");
     return { success: true, message: botResponse };
   } catch (error) {
     console.error("Error al enviar mensaje:", error);

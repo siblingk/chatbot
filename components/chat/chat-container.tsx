@@ -9,21 +9,25 @@ import {
   getOrCreateSessionId,
   getStoredMessages,
   updateMessages,
+  clearMessages,
 } from "@/app/actions/chat";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
-export default function ChatContainer() {
-  const [sessionId, setSessionId] = useState<string>("");
+interface ChatContainerProps {
+  workshopId?: string;
+}
+
+export default function ChatContainer({ workshopId }: ChatContainerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     async function initialize() {
-      const sid = await getOrCreateSessionId();
       const msgs = await getStoredMessages();
-      setSessionId(sid);
       setMessages(msgs);
       setIsLoading(false);
     }
@@ -35,6 +39,7 @@ export default function ChatContainer() {
     if (!messageText || typeof messageText !== "string" || !messageText.trim())
       return;
 
+    const sessionId = await getOrCreateSessionId();
     const newMessage: Message = {
       id: generateUUID(),
       text: messageText,
@@ -67,52 +72,51 @@ export default function ChatContainer() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   return (
-    <AnimatePresence mode="wait">
-      {isLoading ? (
-        <motion.div
-          key="loading"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="flex items-center justify-center h-screen"
+    <div className="flex flex-col h-full max-w-5xl mx-auto pt-10">
+      <div className="flex justify-end px-4 mb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-destructive"
+          onClick={async () => {
+            await clearMessages();
+            setMessages([]);
+          }}
         >
-          <div className="text-center space-y-4">
+          <Trash2 className="h-4 w-4 mr-2" />
+          Limpiar chat
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <MessageList
+          messages={messages}
+          isLoading={isLoading || isTyping}
+          workshopId={workshopId}
+        />
+        <AnimatePresence>
+          {isTyping && (
             <motion.div
-              animate={{
-                rotate: 360,
-              }}
-              transition={{
-                duration: 1,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-              className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mx-auto"
-            />
-            <motion.p
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-muted-foreground"
+              exit={{ opacity: 0, y: 10 }}
+              className="px-4 py-2 text-sm text-gray-500"
             >
-              Cargando conversación...
-            </motion.p>
-          </div>
-        </motion.div>
-      ) : (
-        <motion.div
-          key="chat"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="flex flex-col h-screen"
-        >
-          <div className="flex-1 overflow-hidden">
-            <MessageList messages={messages} isLoading={isTyping} />
-          </div>
-          <MessageInput onSubmit={handleSubmit} />
-        </motion.div>
-      )}
-    </AnimatePresence>
+              El asistente está escribiendo...
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <MessageInput onSubmit={handleSubmit} />
+    </div>
   );
 }

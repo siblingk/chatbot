@@ -2,13 +2,11 @@
 
 import {
   Home,
-  MessageSquare,
   Settings,
   ChevronUp,
   User2,
   Building2,
   Plus,
-  LogOut,
   AlertTriangle,
 } from "lucide-react";
 
@@ -33,8 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { SignInButton, SignUpButton } from "@/components/auth/auth-buttons";
-import { createClient } from "@/utils/supabase/client";
+import { SignInButton, SignOutButton } from "@/components/auth/auth-buttons";
 import { useAuth } from "@/contexts/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -46,11 +43,6 @@ const items = [
     title: "Inicio",
     url: "/",
     icon: Home,
-  },
-  {
-    title: "Chat",
-    url: "/chat",
-    icon: MessageSquare,
   },
 ];
 
@@ -65,13 +57,8 @@ const adminItems = [
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
   const { isAdmin } = useUserRole();
-  const supabase = createClient();
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
-  console.log(user);
+  console.log(isAdmin);
 
   return (
     <Sidebar collapsible="icon">
@@ -137,7 +124,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      {/* Pie de barra lateral que contiene el menú de usuario */}
+      {/* <SidebarFooter>
         <SidebarMenu>
           {user ? (
             <SidebarMenuItem>
@@ -156,9 +144,8 @@ export function AppSidebar() {
                   <DropdownMenuItem>
                     <ThemeToggle />
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Cerrar sesión</span>
+                  <DropdownMenuItem>
+                    <SignOutButton />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -168,13 +155,11 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SignInButton />
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SignUpButton />
-              </SidebarMenuItem>
             </>
           )}
         </SidebarMenu>
-      </SidebarFooter>
+      </SidebarFooter> 
+      */}
     </Sidebar>
   );
 }

@@ -17,9 +17,31 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Mantener el foco en el input
+  // Mantener el foco en el input constantemente
   useEffect(() => {
-    inputRef.current?.focus();
+    const focusInput = () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+
+    // Foco inicial
+    focusInput();
+
+    // Mantener el foco después de cualquier cambio
+    const interval = setInterval(focusInput, 100);
+
+    // Evento para mantener el foco al hacer clic en cualquier parte
+    const handleClick = () => {
+      setTimeout(focusInput, 0);
+    };
+
+    document.addEventListener("click", handleClick);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("click", handleClick);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -35,10 +57,6 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
     // Procesar el envío
     startTransition(async () => {
       await onSubmit(formData);
-      // Restaurar el foco después de enviar el mensaje
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 0);
     });
   };
 

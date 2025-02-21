@@ -1,62 +1,39 @@
 "use client";
-
-import {
-  Home,
-  Settings,
-  ChevronUp,
-  User2,
-  Building2,
-  Plus,
-  AlertTriangle,
-} from "lucide-react";
+import { Plus, AlertTriangle, Car } from "lucide-react";
 
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
   SidebarMenuAction,
 } from "@/components/ui/sidebar";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import { SignInButton, SignOutButton } from "@/components/auth/auth-buttons";
 import { useAuth } from "@/contexts/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { useUserRole } from "@/hooks/useUserRole";
 
-const items = [
-  {
-    title: "Inicio",
-    url: "/",
-    icon: Home,
-  },
-];
+// const items = [
+//   {
+//     title: "Inicio",
+//     url: "/",
+//     icon: Home,
+//   },
+// ];
 
-const adminItems = [
-  {
-    title: "Configuración",
-    url: "/settings",
-    icon: Settings,
-  },
-];
+// const adminItems = [
+//   {
+//     title: "Configuración",
+//     url: "/settings",
+//     icon: Settings,
+//   },
+// ];
 
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
-  const { isAdmin } = useUserRole();
+  //const { isAdmin } = useUserRole();
 
   return (
     <Sidebar collapsible="icon">
@@ -64,8 +41,8 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton>
-              <Building2 />
-              <span>Siblingk</span>
+              <Car />
+              <span>Siblingk AI</span>
             </SidebarMenuButton>
             <SidebarMenuAction>
               <Plus />
@@ -92,11 +69,14 @@ export function AppSidebar() {
             </AlertDescription>
           </Alert>
         )}
-        <SidebarGroup>
+
+        {/* Grupo de navegación principal */}
+        {/* <SidebarGroup>
           <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {/* Mapeo de elementos de navegación principales */}
+        {/* {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <a href={item.url}>
@@ -105,8 +85,9 @@ export function AppSidebar() {
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
-              {isAdmin &&
+              ))} */}
+        {/* Mapeo de elementos de administrador si el usuario es admin */}
+        {/* {isAdmin &&
                 adminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
@@ -119,7 +100,7 @@ export function AppSidebar() {
                 ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
+        </SidebarGroup> */}
       </SidebarContent>
 
       {/* Pie de barra lateral que contiene el menú de usuario */}

@@ -39,7 +39,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <SidebarProvider>
+            <SidebarProvider defaultOpen={false}>
               <AppSidebar />
               <SidebarTrigger className="p-4 ml-2 mt-2" />
               <main className="min-h-screen w-full">

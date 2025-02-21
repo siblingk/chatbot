@@ -61,7 +61,11 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="drop-shadow-xl"
+    >
       <div className="container max-w-3xl mx-auto">
         <motion.form
           ref={formRef}

@@ -7,32 +7,20 @@ import { generateUUID } from "@/lib/utils/uuid";
 import {
   sendMessage,
   getOrCreateSessionId,
-  getStoredMessages,
   updateMessages,
-  clearMessages,
 } from "@/app/actions/chat";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useChat } from "@/contexts/chat-context";
 
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
 
 interface ChatContainerProps {
   workshopId?: string;
 }
 
 export default function ChatContainer({ workshopId }: ChatContainerProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { messages, setMessages } = useChat();
   const [isTyping, setIsTyping] = useState(false);
-
-  useEffect(() => {
-    async function initialize() {
-      const msgs = await getStoredMessages();
-      setMessages(msgs);
-      setIsLoading(false);
-    }
-    initialize();
-  }, []);
 
   const handleSubmit = async (formData: FormData) => {
     const messageText = formData.get("message");
@@ -78,40 +66,19 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
     await handleSubmit(formData);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
   const hasUserMessages = messages.some((message) => message.isUser);
 
   return (
-    <div className="flex flex-col h-screen pt-2 overflow-hidden">
-      <div className="flex justify-end px-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-destructive"
-          onClick={async () => {
-            await clearMessages();
-            setMessages([]);
-          }}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex-1 overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-10rem)] overflow-hidden">
         <MessageList
           messages={messages}
-          isLoading={isLoading || isTyping}
+          isLoading={isTyping}
           workshopId={workshopId}
         />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm">
+      <div className="fixed bottom-0 left-0 right-0 p-4 shadow-xl">
         {!hasUserMessages ? (
           <div className="flex flex-col items-center px-4 mb-6 text-center">
             <span className="mb-3 text-sm text-muted-foreground animate-bounce">

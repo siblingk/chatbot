@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "sonner";
+import { ChatProvider } from "@/contexts/chat-context";
+import { NavBar } from "@/components/nav-bar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,13 +41,15 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <SidebarProvider defaultOpen={false}>
-              <AppSidebar />
-              <SidebarTrigger className="p-4 ml-2 mt-2" />
-              <main className="size-full">
-                <div className="container h-full mx-auto">{children}</div>
-              </main>
-            </SidebarProvider>
+            <ChatProvider>
+              <SidebarProvider defaultOpen={false}>
+                <AppSidebar />
+                <div className="flex flex-col min-h-screen w-full">
+                  <NavBar />
+                  <main className="flex-1">{children}</main>
+                </div>
+              </SidebarProvider>
+            </ChatProvider>
           </AuthProvider>
         </ThemeProvider>
         <Toaster richColors position="top-right" />

@@ -42,8 +42,8 @@ export default function RootLayout({
             <SidebarProvider defaultOpen={false}>
               <AppSidebar />
               <SidebarTrigger className="p-4 ml-2 mt-2" />
-              <main className="min-h-screen w-full">
-                <div className="container pt-10 h-full mx-auto">{children}</div>
+              <main className="size-full">
+                <div className="container h-full mx-auto">{children}</div>
               </main>
             </SidebarProvider>
           </AuthProvider>

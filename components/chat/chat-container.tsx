@@ -89,7 +89,7 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
   const hasUserMessages = messages.some((message) => message.isUser);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-40px)] overflow-hidden">
+    <div className="flex flex-col h-screen pt-2 overflow-hidden">
       <div className="flex justify-end px-4">
         <Button
           variant="ghost"
@@ -110,36 +110,35 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
           workshopId={workshopId}
         />
       </div>
-      {!hasUserMessages && (
-        <div className="flex flex-col items-center px-4 mb-6 text-center">
-          <span className="mb-3 text-sm text-muted-foreground animate-bounce">
-            ¡Descubre tu cotización ahora! ✨
-          </span>
-          <Button
-            onClick={handleQuotationRequest}
-            className="group relative overflow-hidden dark:bg-zinc-800/40 bg-zinc-50 dark:hover:bg-zinc-800/60 hover:bg-zinc-100/80 
+
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm">
+        {!hasUserMessages ? (
+          <div className="flex flex-col items-center px-4 mb-6 text-center">
+            <span className="mb-3 text-sm text-muted-foreground animate-bounce">
+              ¡Descubre tu cotización ahora! ✨
+            </span>
+            <Button
+              onClick={handleQuotationRequest}
+              className="group relative overflow-hidden dark:bg-zinc-800/40 bg-zinc-50 dark:hover:bg-zinc-800/60 hover:bg-zinc-100/80 
             px-12 py-6 rounded-3xl backdrop-blur-xl
             shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset,0_8px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_8px_20px_-4px_rgba(0,0,0,0.2)]
             hover:shadow-[0_0_0_1px_rgba(0,0,0,0.08)_inset,0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset,0_12px_24px_-4px_rgba(0,0,0,0.3)]
             active:scale-[0.98] transition-all duration-300"
-          >
-            <div className="relative flex items-center gap-3">
-              <span className="relative z-10 text-[17px] font-medium tracking-[-0.01em] text-zinc-800 dark:text-zinc-200">
-                Iniciar cotización
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="w-[4px] h-[4px] rounded-full bg-[#07c167] shadow-[0_0_6px_rgba(7,193,103,0.4)] animate-pulse" />
+            >
+              <div className="relative flex items-center gap-3">
+                <span className="relative z-10 text-[17px] font-medium tracking-[-0.01em] text-zinc-800 dark:text-zinc-200">
+                  Iniciar cotización
+                </span>
+                <div className="flex items-center gap-2">
+                  <div className="w-[4px] h-[4px] rounded-full bg-[#07c167] shadow-[0_0_6px_rgba(7,193,103,0.4)] animate-pulse" />
+                </div>
               </div>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          </Button>
-          <span className="mt-2 text-xs text-muted-foreground/80">
-            Respuesta instantánea
-          </span>
-        </div>
-      )}
-      <div className="mt-auto">
-        <MessageInput onSubmit={handleSubmit} />
+              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            </Button>
+          </div>
+        ) : (
+          <MessageInput onSubmit={handleSubmit} />
+        )}
       </div>
     </div>
   );

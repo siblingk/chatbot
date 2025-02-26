@@ -11,7 +11,7 @@ if (!WEBHOOK_URL) {
 }
 
 export async function getOrCreateSessionId(): Promise<string> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionId = cookieStore.get("chatSessionId")?.value;
 
   if (!sessionId) {

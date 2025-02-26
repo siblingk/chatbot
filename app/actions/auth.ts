@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-
+import { cookies } from "next/headers";
 import { AppRole } from "@/types/auth";
 import { redirect } from "next/navigation";
 
@@ -9,7 +9,8 @@ export async function getUserRole(): Promise<{
   role: AppRole | null;
   isAdmin: boolean;
 }> {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
 
   try {
     const {
@@ -46,7 +47,8 @@ export async function signIn(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -61,13 +63,15 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signOut() {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
   await supabase.auth.signOut();
   redirect("/");
 }
 
 export async function getUser() {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
   const {
     data: { session },
   } = await supabase.auth.getSession();

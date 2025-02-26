@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Forward } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 interface MessageInputProps {
   onSubmit: (formData: FormData) => Promise<void>;
 }
 
 export function MessageInput({ onSubmit }: MessageInputProps) {
+  const t = useTranslations("chat");
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +85,7 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Escribe un mensaje..."
+              placeholder={t("placeholder")}
               autoComplete="off"
               className="h-14 pl-6 pr-14 rounded-2xl shadow-sm transition-all duration-200 border-muted-foreground/20 focus:bg-muted group-hover:bg-muted"
               disabled={isPending}
@@ -117,7 +119,7 @@ export function MessageInput({ onSubmit }: MessageInputProps) {
                     disabled={isPending}
                   >
                     <Forward className="h-4 w-4 text-primary-foreground" />
-                    <span className="sr-only">Enviar mensaje</span>
+                    <span className="sr-only">{t("send")}</span>
                   </Button>
                 </motion.div>
               ) : null}

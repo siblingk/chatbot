@@ -11,20 +11,15 @@ if (!WEBHOOK_URL) {
 }
 
 export async function getOrCreateSessionId(): Promise<string> {
-  const cookiesList = await cookies();
-  const sessionId = cookiesList.get("chatSessionId")?.value;
+  const cookieStore = cookies();
+  const sessionId = cookieStore.get("chatSessionId")?.value;
 
   if (!sessionId) {
     const newSessionId = generateUUID();
-    cookiesList.set({
-      name: "chatSessionId",
-      value: newSessionId,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+    cookieStore.set("chatSessionId", newSessionId, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 1 semana
     });
-    revalidatePath("/");
     return newSessionId;
   }
 
@@ -107,10 +102,18 @@ export async function sendMessage(sessionId: string, message: string) {
     return { success: true, message: botResponse };
   } catch (error) {
     console.error("Error al enviar mensaje:", error);
+
+    // Obtener el idioma actual del usuario
+    const cookieStore = await cookies();
+    const locale = cookieStore.get("user_locale")?.value || "es";
+
+    // Obtener el mensaje de error de las traducciones según el idioma
+    const messages = await import(`../../messages/${locale}.json`);
+    const errorMessage = messages.default.chat.errorMessage;
+
     return {
       success: false,
-      message:
-        "Lo siento, hubo un error al enviar tu mensaje. Por favor, intenta de nuevo.",
+      message: errorMessage,
     };
   }
 }

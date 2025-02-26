@@ -1,8 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const supabase = await createClient();
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
 
   try {
     const { data, error } = await supabase.from("test").select("*");

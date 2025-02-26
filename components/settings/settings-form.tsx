@@ -27,19 +27,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
-
-const formSchema = z.object({
-  workshop_id: z.string().min(1, "El ID del taller es requerido"),
-  workshop_name: z.string().min(1, "El nombre del taller es requerido"),
-  welcome_message: z.string().min(1, "El mensaje de bienvenida es requerido"),
-  interaction_tone: z.string().min(1, "El tono de interacción es requerido"),
-  pre_quote_message: z.string().min(1, "El mensaje de pre-quote es requerido"),
-  contact_required: z.boolean(),
-  lead_assignment_mode: z.enum(["automatic", "manual"]),
-  follow_up_enabled: z.boolean(),
-  price_source: z.enum(["ai", "dcitelly_api"]),
-  template_id: z.string().nullable(),
-});
+import { useTranslations } from "next-intl";
 
 interface SettingsFormProps {
   setting?: Setting | null;
@@ -47,6 +35,21 @@ interface SettingsFormProps {
 }
 
 export function SettingsForm({ setting, onClose }: SettingsFormProps) {
+  const t = useTranslations("settings");
+
+  const formSchema = z.object({
+    workshop_id: z.string().min(1, t("requiredField")),
+    workshop_name: z.string().min(1, t("requiredField")),
+    welcome_message: z.string().min(1, t("requiredField")),
+    interaction_tone: z.string().min(1, t("requiredField")),
+    pre_quote_message: z.string().min(1, t("requiredField")),
+    contact_required: z.boolean(),
+    lead_assignment_mode: z.enum(["automatic", "manual"]),
+    follow_up_enabled: z.boolean(),
+    price_source: z.enum(["ai", "dcitelly_api"]),
+    template_id: z.string().nullable(),
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: setting || {
@@ -66,22 +69,18 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       const result = setting
-        ? await updateSetting(setting.id, values)
+        ? await updateSetting(Number(setting.id), values)
         : await createSetting(values as SettingFormData);
 
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success(
-          setting
-            ? "Configuración actualizada correctamente"
-            : "Configuración creada correctamente"
-        );
+        toast.success(setting ? t("updateSuccess") : t("createSuccess"));
         onClose();
       }
     } catch (error) {
       console.error(error);
-      toast.error("Ocurrió un error al procesar la solicitud");
+      toast.error(t("error"));
     }
   };
 
@@ -90,7 +89,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <SheetHeader>
           <SheetTitle>
-            {setting ? "Editar" : "Crear"} Configuración de Taller
+            {setting ? t("editWorkshop") : t("createWorkshop")}
           </SheetTitle>
         </SheetHeader>
 
@@ -99,7 +98,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="workshop_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>ID del Taller</FormLabel>
+              <FormLabel>{t("workshopId")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -113,7 +112,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="workshop_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nombre del Taller</FormLabel>
+              <FormLabel>{t("workshopName")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -127,7 +126,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="welcome_message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Mensaje de Bienvenida</FormLabel>
+              <FormLabel>{t("welcomeMessage")}</FormLabel>
               <FormControl>
                 <Textarea {...field} />
               </FormControl>
@@ -141,7 +140,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="interaction_tone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tono de Interacción</FormLabel>
+              <FormLabel>{t("interactionTone")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -155,7 +154,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="pre_quote_message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Mensaje de Pre-Quote</FormLabel>
+              <FormLabel>{t("preQuoteMessage")}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -169,16 +168,16 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="lead_assignment_mode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Modo de Asignación de Leads</FormLabel>
+              <FormLabel>{t("leadAssignmentMode")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un modo" />
+                    <SelectValue placeholder={t("selectMode")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="automatic">Automático</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="automatic">{t("automatic")}</SelectItem>
+                  <SelectItem value="manual">{t("manual")}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -191,16 +190,18 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="price_source"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fuente de Precios</FormLabel>
+              <FormLabel>{t("priceSource")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una fuente" />
+                    <SelectValue placeholder={t("selectSource")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="ai">AI</SelectItem>
-                  <SelectItem value="dcitelly_api">API de Dcitelly</SelectItem>
+                  <SelectItem value="ai">{t("ai")}</SelectItem>
+                  <SelectItem value="dcitelly_api">
+                    {t("dcitellyApi")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -214,10 +215,10 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Contacto Requerido</FormLabel>
-                <FormDescription>
-                  ¿Se requiere contacto con el cliente?
-                </FormDescription>
+                <FormLabel className="text-base">
+                  {t("contactRequired")}
+                </FormLabel>
+                <FormDescription>{t("contactRequiredDesc")}</FormDescription>
               </div>
               <FormControl>
                 <Switch
@@ -236,11 +237,9 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <FormLabel className="text-base">
-                  Seguimiento Habilitado
+                  {t("followUpEnabled")}
                 </FormLabel>
-                <FormDescription>
-                  ¿Habilitar seguimiento automático?
-                </FormDescription>
+                <FormDescription>{t("followUpEnabledDesc")}</FormDescription>
               </div>
               <FormControl>
                 <Switch
@@ -268,13 +267,11 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
             </FormItem>
           )}
         />
-        <div className="flex gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
-            Cancelar
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} type="button">
+            {t("cancel")}
           </Button>
-          <Button type="submit">
-            {setting ? "Actualizar" : "Crear"} Configuración
-          </Button>
+          <Button type="submit">{t("save")}</Button>
         </div>
       </form>
     </Form>

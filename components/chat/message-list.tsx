@@ -4,6 +4,7 @@ import { Loader } from "@/components/ui/loader";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { WelcomeMessage } from "@/components/chat/welcome-message";
+import { useTranslations } from "next-intl";
 
 interface MessageListProps {
   messages: Message[];
@@ -16,6 +17,7 @@ export function MessageList({
   isLoading,
   workshopId,
 }: MessageListProps) {
+  const t = useTranslations("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showSecondMessage, setShowSecondMessage] = useState(false);
@@ -106,8 +108,10 @@ export function MessageList({
             >
               <div className="max-w-[85%] rounded-2xl px-4 py-2 bg-muted">
                 <p className="whitespace-pre-wrap break-words">
-                  ¿En qué puedo ayudarte hoy? Estoy aquí para responder tus
-                  preguntas y asistirte en lo que necesites.
+                  {t("initialMessage", {
+                    defaultValue:
+                      "Welcome to the chat! I'm here to help you with your questions and assist you in any way I can.",
+                  })}
                 </p>
               </div>
             </motion.div>

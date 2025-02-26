@@ -1,5 +1,14 @@
 "use client";
-import { Plus, AlertTriangle, Car } from "lucide-react";
+import {
+  Plus,
+  AlertTriangle,
+  Car,
+  Settings,
+  User2,
+  ChevronUp,
+  LogIn,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   Sidebar,
@@ -9,44 +18,48 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarMenuAction,
+  SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import { useAuth } from "@/contexts/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-
-// const items = [
-//   {
-//     title: "Inicio",
-//     url: "/",
-//     icon: Home,
-//   },
-// ];
-
-// const adminItems = [
-//   {
-//     title: "Configuración",
-//     url: "/settings",
-//     icon: Settings,
-//   },
-// ];
+import { useUserRole } from "@/hooks/useUserRole";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { ThemeToggle } from "./theme/theme-toggle";
+import { SignOutButton } from "./auth/auth-buttons";
+import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
+import { useSettingsModal } from "@/contexts/settings-modal-context";
 
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
-  //const { isAdmin } = useUserRole();
+  const { isAdmin } = useUserRole();
+  const { open } = useSidebar();
+  const { locale, setLocale } = useLanguage();
+  const { openSettingsModal } = useSettingsModal();
+  const t = useTranslations();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Car />
-              <span>Siblingk AI</span>
+            <SidebarMenuButton asChild>
+              <Link href="/">
+                <Car />
+                <span>{t("app.title")}</span>
+              </Link>
             </SidebarMenuButton>
             <SidebarMenuAction>
               <Plus />
-              <span className="sr-only">Agregar acción</span>
+              <span className="sr-only">{t("common.add")}</span>
             </SidebarMenuAction>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -57,55 +70,42 @@ export function AppSidebar() {
           <Alert className="mb-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Por favor, verifica tu correo electrónico para acceder a todas las
-              funcionalidades.
+              {t("sidebar.verifyEmail")}
               <Button
                 variant="link"
                 className="p-0 h-auto font-normal"
                 onClick={() => window.location.reload()}
               >
-                Recargar página
+                {t("sidebar.reload")}
               </Button>
             </AlertDescription>
           </Alert>
         )}
-
-        {/* Grupo de navegación principal */}
-        {/* <SidebarGroup>
-          <SidebarGroupLabel>Navegación</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Mapeo de elementos de navegación principales */}
-        {/* {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))} */}
-        {/* Mapeo de elementos de administrador si el usuario es admin */}
-        {/* {isAdmin &&
-                adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <a href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup> */}
       </SidebarContent>
 
       {/* Pie de barra lateral que contiene el menú de usuario */}
-      {/* <SidebarFooter>
+      <SidebarFooter>
         <SidebarMenu>
+          {/* Selector de idioma como elemento independiente */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setLocale(locale === "es" ? "en" : "es")}
+            >
+              {locale === "en" ? <span>EN</span> : <span>ES</span>}
+              <span>
+                {t("language.title")}: {locale === "es" ? "Español" : "English"}
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={openSettingsModal}>
+                <Settings className="h-4 w-4" />
+                {t("sidebar.settings")}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           {user ? (
             <SidebarMenuItem>
               <DropdownMenu>
@@ -117,13 +117,16 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  side="top"
-                  className="w-[--radix-popper-anchor-width]"
+                  side={open ? "top" : "right"}
+                  align={open ? "start" : "end"}
+                  className={`${
+                    open ? "w-[--radix-popper-anchor-width]" : "w-full"
+                  }`}
                 >
-                  <DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <ThemeToggle />
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <SignOutButton />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -132,13 +135,17 @@ export function AppSidebar() {
           ) : (
             <>
               <SidebarMenuItem>
-                <SignInButton />
+                <SidebarMenuButton asChild>
+                  <Link href="/auth/signin">
+                    <LogIn className="h-4 w-4" />
+                    {t("auth.signIn")}
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             </>
           )}
         </SidebarMenu>
-      </SidebarFooter> 
-      */}
+      </SidebarFooter>
     </Sidebar>
   );
 }

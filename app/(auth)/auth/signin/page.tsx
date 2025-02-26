@@ -1,0 +1,107 @@
+"use client";
+
+import { useState } from "react";
+import { signIn } from "@/app/actions/auth";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { LogIn } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+export default function SignInPage() {
+  const t = useTranslations("auth");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSignIn = async (formData: FormData) => {
+    setError("");
+    setLoading(true);
+
+    try {
+      const result = await signIn(formData);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      // Redirect user to home page after sign in
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError(t("signInError"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-bold">{t("signInTitle")}</h2>
+          <p className="mt-2 text-sm">{t("signInSubtitle")}</p>
+        </div>
+
+        <form action={handleSignIn} className="mt-8 space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium">
+                {t("email")}
+              </label>
+              <Input
+                id="email"
+                type="email"
+                name="email"
+                placeholder={t("emailPlaceholder")}
+                required
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium">
+                {t("password")}
+              </label>
+              <Input
+                id="password"
+                type="password"
+                name="password"
+                placeholder={t("passwordPlaceholder")}
+                required
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full flex items-center justify-center gap-2"
+            disabled={loading}
+          >
+            <LogIn className="h-4 w-4" />
+            {loading ? t("signInLoading") : t("signInButton")}
+          </Button>
+
+          <div className="text-center mt-4">
+            <p className="text-sm">
+              {t("noAccount")}{" "}
+              <Link href="/auth/signup" className="font-medium hover:underline">
+                {t("registerHere")}
+              </Link>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

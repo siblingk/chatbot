@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/chat";
 import { useState } from "react";
 import { useChat } from "@/contexts/chat-context";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +20,7 @@ interface ChatContainerProps {
 }
 
 export default function ChatContainer({ workshopId }: ChatContainerProps) {
+  const t = useTranslations("chat");
   const { messages, setMessages } = useChat();
   const [isTyping, setIsTyping] = useState(false);
 
@@ -62,7 +64,7 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
 
   const handleQuotationRequest = async () => {
     const formData = new FormData();
-    formData.append("message", "Quiero cotizar");
+    formData.append("message", t("quotationMessage"));
     await handleSubmit(formData);
   };
 
@@ -82,7 +84,7 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
         {!hasUserMessages ? (
           <div className="flex flex-col items-center px-4 mb-6 text-center">
             <span className="mb-3 text-sm text-muted-foreground animate-bounce">
-              ¡Descubre tu cotización ahora! ✨
+              {t("discoverQuotation")}
             </span>
             <Button
               onClick={handleQuotationRequest}
@@ -94,7 +96,7 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
             >
               <div className="relative flex items-center gap-3">
                 <span className="relative z-10 text-[17px] font-medium tracking-[-0.01em] text-zinc-800 dark:text-zinc-200">
-                  Iniciar cotización
+                  {t("startQuotation")}
                 </span>
                 <div className="flex items-center gap-2">
                   <div className="w-[4px] h-[4px] rounded-full bg-[#07c167] shadow-[0_0_6px_rgba(7,193,103,0.4)] animate-pulse" />

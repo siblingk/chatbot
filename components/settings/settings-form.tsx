@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,17 +23,19 @@ import { createSetting, updateSetting } from "@/app/actions/settings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 
 interface SettingsFormProps {
   setting?: Setting | null;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
-export function SettingsForm({ setting, onClose }: SettingsFormProps) {
+export function SettingsForm({ setting }: SettingsFormProps) {
   const t = useTranslations("settings");
+  const router = useRouter();
 
   const formSchema = z.object({
     workshop_id: z.string().min(1, t("requiredField")),
@@ -47,36 +47,68 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
     lead_assignment_mode: z.enum(["automatic", "manual"]),
     follow_up_enabled: z.boolean(),
     price_source: z.enum(["ai", "dcitelly_api"]),
-    template_id: z.string().nullable(),
+    template_id: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val === "" ? null : val)),
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: setting || {
-      workshop_id: "",
-      workshop_name: "",
-      welcome_message: "",
-      interaction_tone: "",
-      pre_quote_message: "",
-      contact_required: false,
-      lead_assignment_mode: "manual",
-      follow_up_enabled: true,
-      price_source: "ai",
-      template_id: null,
-    },
+    mode: "onChange",
+    defaultValues: setting
+      ? {
+          workshop_id: setting.workshop_id.toString(),
+          workshop_name: setting.workshop_name,
+          welcome_message: setting.welcome_message,
+          interaction_tone: setting.interaction_tone,
+          pre_quote_message: setting.pre_quote_message,
+          contact_required: setting.contact_required,
+          lead_assignment_mode: setting.lead_assignment_mode,
+          follow_up_enabled: setting.follow_up_enabled,
+          price_source: setting.price_source,
+          template_id: setting.template_id,
+        }
+      : {
+          workshop_id: "",
+          workshop_name: "",
+          welcome_message: "",
+          interaction_tone: "",
+          pre_quote_message: "",
+          contact_required: false,
+          lead_assignment_mode: "automatic",
+          follow_up_enabled: false,
+          price_source: "ai",
+          template_id: null,
+        },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      // Aseguramos que template_id sea string | null antes de enviarlo
+      const formData = {
+        ...values,
+        template_id: values.template_id || null,
+      };
+
+      console.log(
+        "ID del setting a actualizar:",
+        setting?.id,
+        "Tipo:",
+        typeof setting?.id
+      );
+
       const result = setting
-        ? await updateSetting(Number(setting.id), values)
-        : await createSetting(values as SettingFormData);
+        ? await updateSetting(setting.id, formData)
+        : await createSetting(formData as SettingFormData);
 
       if (result.error) {
         toast.error(result.error);
       } else {
         toast.success(setting ? t("updateSuccess") : t("createSuccess"));
-        onClose();
+        // Refrescar la página para mostrar los cambios
+        router.refresh();
       }
     } catch (error) {
       console.error(error);
@@ -256,7 +288,7 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
           name="template_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>ID de Plantilla</FormLabel>
+              <FormLabel>{t("templateId")}</FormLabel>
               <FormControl>
                 <Input {...field} value={field.value || ""} />
               </FormControl>
@@ -267,11 +299,15 @@ export function SettingsForm({ setting, onClose }: SettingsFormProps) {
             </FormItem>
           )}
         />
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} type="button">
-            {t("cancel")}
-          </Button>
-          <Button type="submit">{t("save")}</Button>
+        <div className="flex justify-end space-x-2">
+          <SheetClose asChild>
+            <Button variant="outline" type="button">
+              {t("cancel")}
+            </Button>
+          </SheetClose>
+          <SheetClose asChild>
+            <Button type="submit">{t("save")}</Button>
+          </SheetClose>
         </div>
       </form>
     </Form>

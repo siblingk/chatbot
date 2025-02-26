@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { User } from "@/app/actions/users";
+import { useState } from "react";
+import {
+  User,
+  activateUserAction,
+  deactivateUserAction,
+  toggleUserRoleAction,
+} from "@/app/actions/users";
 import {
   ColumnDef,
   flexRender,
@@ -22,28 +27,26 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, Trash2, UserPlus, Shield, Mail } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { UsersSheet } from "./users-sheet";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { UserForm } from "./user-form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useRouter } from "next/navigation";
 
 interface UsersTableProps {
   users: User[];
@@ -53,146 +56,138 @@ interface UsersTableProps {
 export function UsersTable({ users, columns }: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const t = useTranslations("users");
+  const router = useRouter();
 
-  const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setIsSheetOpen(true);
-  };
+  const handleStatusChange = async (
+    user: User,
+    newStatus: "active" | "inactive"
+  ) => {
+    if (!user || !user.id) {
+      toast.error(t("error"));
+      console.error("ID de usuario inválido para cambiar estado:", user);
+      return;
+    }
 
-  const handleDelete = (user: User) => {
-    setSelectedUser(user);
-    setIsDeleteDialogOpen(true);
-  };
+    try {
+      const result =
+        newStatus === "active"
+          ? await activateUserAction(user.id)
+          : await deactivateUserAction(user.id);
 
-  const handleCreate = () => {
-    setSelectedUser(null);
-    setIsSheetOpen(true);
-  };
-
-  const handleCloseSheet = () => {
-    setTimeout(() => {
-      setIsSheetOpen(false);
-      setSelectedUser(null);
-    }, 0);
-  };
-
-  const confirmDelete = async () => {
-    if (selectedUser) {
-      // Aquí iría la lógica para eliminar el usuario
-      toast.success(t("userDeleted"));
-
-      setTimeout(() => {
-        setIsDeleteDialogOpen(false);
-        setSelectedUser(null);
-      }, 0);
+      if (result.message && !result.message.includes("Error")) {
+        toast.success(
+          newStatus === "active" ? t("userActivated") : t("userDeactivated")
+        );
+        router.refresh();
+      } else {
+        toast.error(result.message || t("error"));
+      }
+    } catch (error) {
+      console.error("Error al cambiar estado:", error);
+      toast.error(t("error"));
     }
   };
 
-  const handleToggleAdmin = (user: User) => {
-    // Aquí iría la lógica para cambiar el rol del usuario
-    const newRole = user.role === "admin" ? "user" : "admin";
-    console.log(`Cambiando rol de ${user.email} a ${newRole}`);
-    toast.success(
-      user.role === "admin" ? t("adminRemoved") : t("adminGranted")
-    );
-  };
-
-  const handleSendEmail = (user: User) => {
-    // Aquí iría la lógica para enviar un correo al usuario
-    console.log(`Enviando correo a: ${user.email}`);
-    toast.success(t("emailSent"));
-  };
-
-  // Función para manejar el cambio de estado del diálogo de confirmación
-  const handleDeleteDialogChange = useCallback((open: boolean) => {
-    if (!open) {
-      setTimeout(() => {
-        setIsDeleteDialogOpen(false);
-        setTimeout(() => {
-          setSelectedUser(null);
-        }, 100);
-      }, 0);
-    } else {
-      setIsDeleteDialogOpen(true);
+  const handleRoleChange = async (user: User, newRole: string) => {
+    if (!user || !user.id) {
+      toast.error(t("error"));
+      console.error("ID de usuario inválido para cambiar rol:", user);
+      return;
     }
-  }, []);
 
-  // Añadir columna de rol con badge
-  const columnsWithRoleBadge: ColumnDef<User>[] = [
+    // Solo hacemos el cambio si el rol es diferente al actual
+    if (user.role === newRole) return;
+
+    try {
+      const result = await toggleUserRoleAction(user.id);
+
+      if (result.message && !result.message.includes("Error")) {
+        toast.success(
+          newRole === "admin" ? t("adminGranted") : t("adminRemoved")
+        );
+        router.refresh();
+      } else {
+        toast.error(result.message || t("error"));
+      }
+    } catch (error) {
+      console.error("Error al cambiar rol:", error);
+      toast.error(t("error"));
+    }
+  };
+
+  // Modificamos las columnas para incluir selects para estado y rol
+  const enhancedColumns: ColumnDef<User>[] = [
     ...columns.map((col) => {
-      // Verificamos si la columna tiene la propiedad id o accessorKey igual a "role"
       const columnId = (col as { accessorKey?: string }).accessorKey || col.id;
+
+      // Modificamos la columna de rol para mostrar un select
       if (columnId === "role") {
         return {
           ...col,
           cell: ({ row }: { row: Row<User> }) => {
-            const role = row.getValue("role") as string;
+            const user = row.original;
             return (
-              <Badge variant={role === "admin" ? "default" : "outline"}>
-                {role === "admin" ? t("admin") : t("user")}
-              </Badge>
+              <Select
+                defaultValue={user.role}
+                onValueChange={(value) => handleRoleChange(user, value)}
+              >
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder={t("selectRole")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">{t("admin")}</SelectItem>
+                  <SelectItem value="user">{t("user")}</SelectItem>
+                </SelectContent>
+              </Select>
             );
           },
         };
       }
+
+      // Modificamos la columna de estado para mostrar un select
+      if (columnId === "status") {
+        return {
+          ...col,
+          cell: ({ row }: { row: Row<User> }) => {
+            const user = row.original;
+            return (
+              <Select
+                defaultValue={user.status}
+                onValueChange={(value: "active" | "inactive") =>
+                  handleStatusChange(user, value)
+                }
+              >
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder={t("selectStatus")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">{t("active")}</SelectItem>
+                  <SelectItem value="inactive">{t("inactive")}</SelectItem>
+                </SelectContent>
+              </Select>
+            );
+          },
+        };
+      }
+
       return col;
     }),
-    {
-      id: "actions",
-      header: t("actions"),
-      cell: ({ row }) => {
-        const user = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">{t("openMenu")}</span>
-                <Edit className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEdit(user)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {t("edit")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSendEmail(user)}>
-                <Mail className="mr-2 h-4 w-4" />
-                {t("sendEmail")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
-                <Shield className="mr-2 h-4 w-4" />
-                {user.role === "admin" ? t("removeAdmin") : t("makeAdmin")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDelete(user)}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
   ];
 
-  // Filtrar usuarios basados en el término de búsqueda
-  const filteredUsers = users.filter((user) => {
+  const filteredData = users.filter((user) => {
+    if (!searchTerm) return true;
     return (
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.status &&
+        user.status.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
   const table = useReactTable({
-    data: filteredUsers,
-    columns: columnsWithRoleBadge,
+    data: filteredData,
+    columns: enhancedColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
@@ -211,10 +206,23 @@ export function UsersTable({ users, columns }: UsersTableProps) {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={handleCreate}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          {t("inviteUser")}
-        </Button>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button>
+              <UserPlus className="mr-2 h-4 w-4" />
+              {t("inviteUser")}
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{t("inviteUser")}</SheetTitle>
+              <SheetDescription>{t("inviteUserDesc")}</SheetDescription>
+            </SheetHeader>
+            <div className="py-4">
+              <UserForm user={null} />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -254,7 +262,7 @@ export function UsersTable({ users, columns }: UsersTableProps) {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columnsWithRoleBadge.length}
+                  colSpan={enhancedColumns.length}
                   className="h-24 text-center"
                 >
                   {users.length === 0 ? t("noData") : t("noResults")}
@@ -282,37 +290,6 @@ export function UsersTable({ users, columns }: UsersTableProps) {
           {t("next")}
         </Button>
       </div>
-
-      {/* Sheet para editar/crear usuario */}
-      <UsersSheet
-        isOpen={isSheetOpen}
-        onClose={handleCloseSheet}
-        user={selectedUser}
-      />
-
-      {/* Diálogo de confirmación para eliminar */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={handleDeleteDialogChange}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("confirmDelete")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("deleteWarning", { email: selectedUser?.email })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {t("delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

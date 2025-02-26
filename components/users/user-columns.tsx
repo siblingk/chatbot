@@ -1,20 +1,13 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { Shield } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { User } from "@/app/actions/users";
+import { Switch } from "@/components/ui/switch";
 
 // For client components that need to use the columns
 export const userColumns: ColumnDef<User>[] = [
@@ -45,43 +38,56 @@ export const userColumns: ColumnDef<User>[] = [
     },
   },
   {
-    accessorKey: "last_sign_in_at",
-    header: "Último acceso",
-    cell: ({ row }) => {
-      const value = row.getValue("last_sign_in_at") as string | null;
-      return value
-        ? format(new Date(value), "dd/MM/yyyy HH:mm", { locale: es })
-        : "-";
+    accessorKey: "status",
+    header: "Estado",
+    cell: ({ row, table }) => {
+      const user = row.original;
+      const isActive = user.status === "active";
+
+      return (
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={isActive}
+            onCheckedChange={() => {
+              if (isActive) {
+                // @ts-expect-error - El meta está tipado correctamente en tiempo de ejecución
+                table.options.meta?.onDeactivate?.(user.id);
+              } else {
+                // @ts-expect-error - El meta está tipado correctamente en tiempo de ejecución
+                table.options.meta?.onActivate?.(user.id);
+              }
+            }}
+          />
+          <Badge
+            variant={isActive ? "default" : "destructive"}
+            className={isActive ? "bg-green-500" : ""}
+          >
+            {isActive ? "Activo" : "Inactivo"}
+          </Badge>
+        </div>
+      );
     },
   },
   {
     id: "actions",
-    header: "Acciones",
+    header: "Cambiar Rol",
     cell: ({ row, table }) => {
       const user = row.original;
+      const isAdmin = user.role === "admin";
 
       return (
-        <div className="flex items-center justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Abrir menú</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem
-                // @ts-expect-error - El meta está tipado correctamente en tiempo de ejecución
-                onClick={() => table.options.meta?.onDelete(user.id)}
-                className="text-destructive focus:bg-destructive/10"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            // @ts-expect-error - El meta está tipado correctamente en tiempo de ejecución
+            table.options.meta?.onToggleAdmin?.(user);
+          }}
+          className={isAdmin ? "text-blue-600" : "text-gray-600"}
+        >
+          <Shield className="mr-2 h-4 w-4" />
+          {isAdmin ? "Quitar Admin" : "Hacer Admin"}
+        </Button>
       );
     },
   },

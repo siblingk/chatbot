@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Setting } from "@/types/settings";
 import {
   ColumnDef,
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   DropdownMenu,
@@ -30,17 +30,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { SettingsSheet } from "./settings-sheet";
+import { deleteSetting } from "@/app/actions/settings";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { SettingsForm } from "./settings-form";
+import { useRouter } from "next/navigation";
 
 interface SettingsTableProps {
   settings: Setting[];
@@ -50,58 +60,33 @@ interface SettingsTableProps {
 export function SettingsTable({ settings, columns }: SettingsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedSetting, setSelectedSetting] = useState<Setting | null>(null);
+  const router = useRouter();
   const t = useTranslations("settings");
 
-  const handleEdit = (setting: Setting) => {
-    setSelectedSetting(setting);
-    setIsSheetOpen(true);
-  };
+  // Función para eliminar un setting
+  const confirmDelete = async (settingId: string | number) => {
+    console.log("ID a eliminar:", settingId, "Tipo:", typeof settingId);
 
-  const handleDelete = (setting: Setting) => {
-    setSelectedSetting(setting);
-    setIsDeleteDialogOpen(true);
-  };
+    if (!settingId) {
+      toast.error(t("error"));
+      console.error("ID inválido para eliminar:", settingId);
+      return;
+    }
 
-  const handleCreate = () => {
-    setSelectedSetting(null);
-    setIsSheetOpen(true);
-  };
+    try {
+      const result = await deleteSetting(settingId);
 
-  const handleCloseSheet = () => {
-    setTimeout(() => {
-      setIsSheetOpen(false);
-      setSelectedSetting(null);
-    }, 0);
-  };
-
-  const confirmDelete = async () => {
-    if (selectedSetting) {
-      // Aquí iría la lógica para eliminar la configuración
-      toast.success(t("deleteSuccess"));
-
-      setTimeout(() => {
-        setIsDeleteDialogOpen(false);
-        setSelectedSetting(null);
-      }, 0);
+      if (result.success) {
+        toast.success(t("deleteSuccess"));
+        router.refresh();
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      console.error("Error deleting setting:", error);
+      toast.error(t("error"));
     }
   };
-
-  // Función para manejar el cambio de estado del diálogo de confirmación
-  const handleDeleteDialogChange = useCallback((open: boolean) => {
-    if (!open) {
-      setTimeout(() => {
-        setIsDeleteDialogOpen(false);
-        setTimeout(() => {
-          setSelectedSetting(null);
-        }, 100);
-      }, 0);
-    } else {
-      setIsDeleteDialogOpen(true);
-    }
-  }, []);
 
   // Añadir columna de acciones
   const columnsWithActions: ColumnDef<Setting>[] = [
@@ -120,17 +105,67 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEdit(setting)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {t("edit")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDelete(setting)}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("delete")}
-              </DropdownMenuItem>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <div className="flex items-center">
+                      <Edit className="mr-2 h-4 w-4" />
+                      {t("edit")}
+                    </div>
+                  </DropdownMenuItem>
+                </SheetTrigger>
+                <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>{t("editWorkshop")}</SheetTitle>
+                    <SheetDescription>{t("editWorkshopDesc")}</SheetDescription>
+                  </SheetHeader>
+                  <div className="py-4">
+                    <SettingsForm setting={setting} />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-destructive"
+                  >
+                    <div className="flex items-center">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {t("delete")}
+                    </div>
+                  </DropdownMenuItem>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{t("confirmDelete")}</DialogTitle>
+                    <DialogDescription>{t("deleteWarning")}</DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline">{t("cancel")}</Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          console.log("Setting a eliminar:", setting);
+                          console.log(
+                            "ID del setting:",
+                            setting.id,
+                            "Tipo:",
+                            typeof setting.id
+                          );
+                          confirmDelete(setting.id);
+                        }}
+                      >
+                        {t("delete")}
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -140,10 +175,11 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
 
   // Filtrar configuraciones basadas en el término de búsqueda
   const filteredSettings = settings.filter((setting) => {
+    const searchTermLower = searchTerm.toLowerCase();
     return (
       setting.workshop_id.toString().includes(searchTerm) ||
-      setting.workshop_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      setting.interaction_tone.toLowerCase().includes(searchTerm.toLowerCase())
+      setting.workshop_name.toLowerCase().includes(searchTermLower) ||
+      setting.interaction_tone.toLowerCase().includes(searchTermLower)
     );
   });
 
@@ -168,10 +204,23 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("addSetting")}
-        </Button>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("addSetting")}
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{t("createWorkshop")}</SheetTitle>
+              <SheetDescription>{t("createWorkshopDesc")}</SheetDescription>
+            </SheetHeader>
+            <div className="py-4">
+              <SettingsForm setting={null} />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -239,37 +288,6 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
           {t("next")}
         </Button>
       </div>
-
-      {/* Sheet para editar/crear configuración */}
-      <SettingsSheet
-        isOpen={isSheetOpen}
-        onClose={handleCloseSheet}
-        setting={selectedSetting}
-      />
-
-      {/* Diálogo de confirmación para eliminar */}
-      <AlertDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={handleDeleteDialogChange}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("confirmDelete")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("deleteWarning", { name: selectedSetting?.workshop_name })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {t("delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

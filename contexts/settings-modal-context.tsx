@@ -6,6 +6,7 @@ import React, {
   useState,
   useCallback,
   ReactNode,
+  useRef,
 } from "react";
 
 interface SettingsModalContextType {
@@ -23,35 +24,58 @@ const SettingsModalContext = createContext<
 export function SettingsModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const isClosingRef = useRef(false);
+  const isChangingTabRef = useRef(false);
 
-  // Simplificamos al máximo las funciones
+  // Función simplificada para abrir el modal
   const openSettingsModal = useCallback(() => {
     setIsOpen(true);
   }, []);
 
+  // Función simplificada para cerrar el modal
   const closeSettingsModal = useCallback(() => {
-    // Primero cerramos el modal
+    // Evitamos múltiples cierres
+    if (isClosingRef.current) return;
+
+    isClosingRef.current = true;
     setIsOpen(false);
 
-    // Reseteamos la pestaña activa después de un tiempo
-    if (activeTab !== "general") {
-      // Usamos setTimeout para asegurar que el cierre del modal se complete primero
-      setTimeout(() => {
-        setActiveTab("general");
-      }, 300);
-    }
-  }, [activeTab]);
+    // Reseteamos la referencia después de un tiempo
+    setTimeout(() => {
+      setActiveTab("general");
+      isClosingRef.current = false;
+    }, 500);
+  }, []);
 
-  // Memoizamos el valor del contexto para evitar renderizaciones innecesarias
+  // Función simplificada para cambiar la pestaña
+  const handleSetActiveTab = useCallback((tab: string) => {
+    if (isClosingRef.current || isChangingTabRef.current) return;
+
+    isChangingTabRef.current = true;
+    setActiveTab(tab);
+
+    // Reseteamos la referencia después de un tiempo
+    setTimeout(() => {
+      isChangingTabRef.current = false;
+    }, 100);
+  }, []);
+
+  // Memoizamos el valor del contexto
   const contextValue = React.useMemo(
     () => ({
       isOpen,
       openSettingsModal,
       closeSettingsModal,
       activeTab,
-      setActiveTab,
+      setActiveTab: handleSetActiveTab,
     }),
-    [isOpen, openSettingsModal, closeSettingsModal, activeTab, setActiveTab]
+    [
+      isOpen,
+      openSettingsModal,
+      closeSettingsModal,
+      activeTab,
+      handleSetActiveTab,
+    ]
   );
 
   return (

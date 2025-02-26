@@ -1,69 +1,136 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { SettingsModal } from "./settings-modal";
 import { getSettings } from "@/app/actions/settings";
 import { getUsers } from "@/app/actions/users";
+import { useSettingsModal } from "@/contexts/settings-modal-context";
 import { Setting } from "@/types/settings";
 import { User } from "@/app/actions/users";
 import { ColumnDef } from "@tanstack/react-table";
-import { useSettingsModal } from "@/contexts/settings-modal-context";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 export function GlobalSettingsModal() {
+  const { isOpen, activeTab } = useSettingsModal();
   const [settings, setSettings] = useState<Setting[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { isOpen } = useSettingsModal();
-  const t = useTranslations("settings");
+  const [hasError, setHasError] = useState(false);
+  const t = useTranslations();
+  const isFetchingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Definimos las columnas para la tabla de configuración
+  // Función simplificada para obtener datos
+  const fetchData = useCallback(async () => {
+    // Evitar múltiples llamadas simultáneas o si el modal está cerrado
+    if (isFetchingRef.current || !isOpen) return;
+
+    isFetchingRef.current = true;
+    setIsLoading(true);
+    setHasError(false);
+
+    try {
+      if (activeTab === "general") {
+        const settingsData = await getSettings();
+        setSettings(settingsData);
+      } else if (activeTab === "users") {
+        const usersData = await getUsers();
+        setUsers(usersData);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setHasError(true);
+      toast.error(t("settings.errorLoading"));
+    } finally {
+      setIsLoading(false);
+
+      // Reseteamos la bandera después de un breve retraso
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        isFetchingRef.current = false;
+        timeoutRef.current = null;
+      }, 300);
+    }
+  }, [isOpen, activeTab, t]);
+
+  // Efecto para cargar datos cuando cambia la pestaña o se abre el modal
+  useEffect(() => {
+    // Solo intentamos cargar datos si el modal está abierto
+    if (!isOpen) return;
+
+    fetchData();
+
+    // Limpieza al desmontar el componente o cuando cambian las dependencias
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      // Asegurarse de que no queden peticiones pendientes
+      isFetchingRef.current = false;
+    };
+  }, [isOpen, activeTab, fetchData]);
+
+  // Definir columnas para la tabla de configuraciones
   const settingsColumns: ColumnDef<Setting>[] = [
     {
       accessorKey: "workshop_id",
-      header: t("workshopId"),
+      header: t("settings.workshopId"),
     },
     {
       accessorKey: "workshop_name",
-      header: t("workshopName"),
+      header: t("settings.workshopName"),
     },
     {
       accessorKey: "interaction_tone",
-      header: t("interactionTone"),
+      header: t("settings.interactionTone"),
     },
   ];
 
-  // Función para cargar datos
-  const fetchData = useCallback(async () => {
-    if (!isOpen) return;
+  // Definir columnas para la tabla de usuarios
+  const userColumns: ColumnDef<User>[] = [
+    {
+      accessorKey: "email",
+      header: t("users.email"),
+    },
+    {
+      accessorKey: "role",
+      header: t("users.role"),
+    },
+    {
+      accessorKey: "status",
+      header: t("users.status"),
+    },
+    {
+      accessorKey: "created_at",
+      header: t("users.createdAt"),
+      cell: ({ row }) => {
+        const createdAt = row.getValue("created_at");
+        if (!createdAt) return "-";
 
-    setIsLoading(true);
-    try {
-      const [settingsData, usersData] = await Promise.all([
-        getSettings(),
-        getUsers(),
-      ]);
+        try {
+          const date = new Date(createdAt as string);
+          return date.toLocaleDateString();
+        } catch (error) {
+          console.error("Error formatting date:", error);
+          return "-";
+        }
+      },
+    },
+  ];
 
-      setSettings(settingsData || []);
-      setUsers(usersData || []);
-    } catch (error) {
-      console.error("Error loading settings data:", error);
-      // En caso de error, aseguramos que los arrays estén vacíos
-      setSettings([]);
-      setUsers([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isOpen]);
-
-  // Efecto para cargar datos cuando el modal se abre
-  useEffect(() => {
-    if (isOpen) {
+  // Manejador para reintentar la carga de datos
+  const handleRetry = useCallback(() => {
+    if (!isFetchingRef.current) {
       fetchData();
     }
-  }, [isOpen, fetchData]);
+  }, [fetchData]);
 
-  // Solo renderizamos el modal si está abierto
+  // Solo renderizamos el modal cuando está abierto para evitar problemas de renderizado
   if (!isOpen) return null;
 
   return (
@@ -71,7 +138,10 @@ export function GlobalSettingsModal() {
       settings={settings}
       users={users}
       settingsColumns={settingsColumns}
+      userColumns={userColumns}
       isLoading={isLoading}
+      hasError={hasError}
+      onRetry={handleRetry}
     />
   );
 }

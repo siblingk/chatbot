@@ -4,7 +4,6 @@ import { Setting } from "@/types/settings";
 import { ColumnDef } from "@tanstack/react-table";
 import { SettingsTable } from "./settings-table";
 import { UsersTable } from "../users/users-table";
-import { userColumns } from "../users/user-columns";
 import {
   Dialog,
   DialogContent,
@@ -44,33 +43,63 @@ import {
 } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 interface SettingsModalProps {
   settings: Setting[];
   users: User[];
   settingsColumns: ColumnDef<Setting>[];
+  userColumns?: ColumnDef<User>[];
   isLoading?: boolean;
+  hasError?: boolean;
+  onRetry?: () => void;
 }
 
 export function SettingsModal({
   settings,
   users,
   settingsColumns,
+  userColumns = [],
   isLoading = false,
+  hasError = false,
+  onRetry,
 }: SettingsModalProps) {
   const { isOpen, closeSettingsModal, activeTab, setActiveTab } =
     useSettingsModal();
   const t = useTranslations("settings");
+  const isClosingRef = useRef(false);
 
   // Función simple para manejar el cierre del modal
+  const handleClose = useCallback(() => {
+    if (isClosingRef.current) return;
+
+    isClosingRef.current = true;
+    closeSettingsModal();
+
+    // Reseteamos la referencia después de un tiempo
+    setTimeout(() => {
+      isClosingRef.current = false;
+    }, 500);
+  }, [closeSettingsModal]);
+
+  // Manejador simplificado para cambios en el estado del diálogo
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
-        closeSettingsModal();
+        handleClose();
       }
     },
-    [closeSettingsModal]
+    [handleClose]
+  );
+
+  // Manejador simplificado para cambiar pestañas
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      if (!isClosingRef.current) {
+        setActiveTab(tabId);
+      }
+    },
+    [setActiveTab]
   );
 
   const navItems = [
@@ -95,7 +124,7 @@ export function SettingsModal({
           {t("description")}
         </DialogDescription>
         <button
-          onClick={closeSettingsModal}
+          onClick={handleClose}
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
         >
           <X className="h-4 w-4" />
@@ -110,7 +139,7 @@ export function SettingsModal({
                     {navItems.map((item) => (
                       <SidebarMenuItem key={item.id}>
                         <SidebarMenuButton
-                          onClick={() => setActiveTab(item.id)}
+                          onClick={() => handleTabChange(item.id)}
                           isActive={activeTab === item.id}
                         >
                           <item.icon className="h-4 w-4" />
@@ -147,6 +176,18 @@ export function SettingsModal({
                 <div className="space-y-4">
                   <Skeleton className="h-8 w-[250px]" />
                   <Skeleton className="h-[500px] w-full" />
+                </div>
+              ) : hasError ? (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <p className="text-destructive mb-4">{t("errorLoading")}</p>
+                  {onRetry && (
+                    <button
+                      onClick={onRetry}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    >
+                      {t("retry")}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>

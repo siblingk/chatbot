@@ -71,6 +71,7 @@ export function UserDialog({
         email: values.email,
         role: values.role,
         created_at: user?.created_at || new Date().toISOString(),
+        status: user?.status || "active",
         last_sign_in_at: user?.last_sign_in_at || null,
       };
 

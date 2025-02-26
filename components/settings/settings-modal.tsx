@@ -125,9 +125,7 @@ export function SettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex flex-col overflow-hidden p-4 h-full">
-        {/* Header */}
-
+      <DialogContent className="flex flex-col overflow-hidden p- h-full lg:h-[90vh] lg:w-[80vw]">
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar para desktop */}
           <aside className="hidden border-r md:block md:w-[200px] lg:w-[240px]">

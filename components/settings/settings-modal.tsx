@@ -1,45 +1,20 @@
 "use client";
-
 import { Setting } from "@/types/settings";
 import { ColumnDef } from "@tanstack/react-table";
 import { SettingsTable } from "./settings-table";
 import { UsersTable } from "../users/users-table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Settings,
   Users,
   Paintbrush,
   Globe,
-  X,
   Check,
   Moon,
   Sun,
 } from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-} from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useRef, useTransition, useMemo, useEffect } from "react";
@@ -48,6 +23,7 @@ import { useLanguage } from "@/contexts/language-context";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useUserRole } from "@/hooks/useUserRole";
+import { cn } from "@/lib/utils";
 
 interface SettingsModalProps {
   settings: Setting[];
@@ -149,60 +125,35 @@ export function SettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="overflow-hidden p-0 md:max-h-[90vh] md:max-w-[90vw] lg:max-w-[90vw]">
-        <DialogTitle className="sr-only">{t("title")}</DialogTitle>
-        <DialogDescription className="sr-only">
-          {t("description")}
-        </DialogDescription>
-        <button
-          onClick={handleClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">{t("close")}</span>
-        </button>
-        <SidebarProvider className="items-start">
-          <Sidebar collapsible="none" className="hidden md:flex">
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {navItems.map((item) => (
-                      <SidebarMenuItem key={item.id}>
-                        <SidebarMenuButton
-                          onClick={() => handleTabChange(item.id)}
-                          isActive={activeTab === item.id}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </Sidebar>
-          <main className="flex h-[80vh] flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
-              <div className="flex items-center gap-2 px-4">
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="#">{t("title")}</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>
-                        {navItems.find((item) => item.id === activeTab)?.name ||
-                          t("general")}
-                      </BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </div>
-            </header>
-            <div className="flex flex-1 flex-col overflow-y-auto p-6">
+      <DialogContent className="flex flex-col overflow-hidden p-4 h-full">
+        {/* Header */}
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar para desktop */}
+          <aside className="hidden border-r md:block md:w-[200px] lg:w-[240px]">
+            <nav className="flex flex-col gap-2 p-4">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    activeTab === item.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span>{item.name}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          {/* Contenido principal */}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Área de contenido scrollable */}
+            <div className="flex-1 overflow-y-auto px-4 pb-24 md:pb-4">
               {isLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-8 w-[250px]" />
@@ -396,8 +347,40 @@ export function SettingsModal({
                 </>
               )}
             </div>
-          </main>
-        </SidebarProvider>
+
+            {/* Footer con navegación móvil deslizable */}
+            <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+              <div className="overflow-x-auto scrollbar-none">
+                <nav className="flex min-w-full items-center px-2">
+                  {navItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleTabChange(item.id)}
+                      className={cn(
+                        "flex flex-1 w-full flex-col items-center gap-1 p-2 text-xs text-wrap font-medium transition-colors",
+                        activeTab === item.id
+                          ? "text-primary"
+                          : "text-muted-foreground hover:text-primary"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md",
+                          activeTab === item.id
+                            ? "bg-primary/10"
+                            : "hover:bg-muted"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5" />
+                      </div>
+                      <span className="truncate">{item.name}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -176,6 +176,13 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
+
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

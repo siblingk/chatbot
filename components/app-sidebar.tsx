@@ -32,17 +32,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { ThemeToggle } from "./theme/theme-toggle";
+
 import { SignOutButton } from "./auth/auth-buttons";
 import Link from "next/link";
-import { useLanguage } from "@/contexts/language-context";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
 
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
   const { isAdmin } = useUserRole();
   const { open } = useSidebar();
-  const { locale, setLocale } = useLanguage();
   const { openSettingsModal } = useSettingsModal();
   const t = useTranslations();
 
@@ -86,17 +84,7 @@ export function AppSidebar() {
       {/* Pie de barra lateral que contiene el menú de usuario */}
       <SidebarFooter>
         <SidebarMenu>
-          {/* Selector de idioma como elemento independiente */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => setLocale(locale === "es" ? "en" : "es")}
-            >
-              {locale === "en" ? <span>EN</span> : <span>ES</span>}
-              <span>
-                {t("language.title")}: {locale === "es" ? "Español" : "English"}
-              </span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* El selector de idioma se ha movido al modal de configuraciones */}
 
           {isAdmin && (
             <SidebarMenuItem>
@@ -123,9 +111,6 @@ export function AppSidebar() {
                     open ? "w-[--radix-popper-anchor-width]" : "w-full"
                   }`}
                 >
-                  <DropdownMenuItem asChild>
-                    <ThemeToggle />
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <SignOutButton />
                   </DropdownMenuItem>

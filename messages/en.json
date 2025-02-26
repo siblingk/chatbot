@@ -118,6 +118,10 @@
     "inviteUserDesc": "Invite a new user to the platform",
     "email": "Email",
     "role": "Role",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "selectStatus": "Select status",
     "createdAt": "Creation Date",
     "selectRole": "Select a role",
     "invalidEmail": "Invalid email",
@@ -157,12 +161,15 @@
     "toggle": "Toggle theme",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "title": "Application Theme",
+    "description": "Customize the appearance of the application by selecting a theme"
   },
   "language": {
     "title": "Language",
     "en": "English",
-    "es": "Spanish"
+    "es": "Spanish",
+    "description": "Select the language in which you want to view the application"
   },
   "common": {
     "save": "Save",

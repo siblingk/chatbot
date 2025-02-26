@@ -161,12 +161,15 @@
     "toggle": "Cambiar tema",
     "light": "Claro",
     "dark": "Oscuro",
-    "system": "Sistema"
+    "system": "Sistema",
+    "title": "Tema de la aplicación",
+    "description": "Personaliza la apariencia de la aplicación seleccionando un tema"
   },
   "language": {
     "title": "Idioma",
     "en": "Inglés",
-    "es": "Español"
+    "es": "Español",
+    "description": "Selecciona el idioma en el que deseas ver la aplicación"
   },
   "common": {
     "save": "Guardar",

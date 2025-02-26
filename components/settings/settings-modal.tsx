@@ -13,13 +13,12 @@ import {
 import {
   Settings,
   Users,
-  Bell,
   Paintbrush,
-  MessageCircle,
   Globe,
-  Keyboard,
-  Lock,
   X,
+  Check,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
@@ -43,7 +42,18 @@ import {
 } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useTransition } from "react";
+import { useTheme } from "next-themes";
+import { useLanguage } from "@/contexts/language-context";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface SettingsModalProps {
   settings: Setting[];
@@ -67,7 +77,19 @@ export function SettingsModal({
   const { isOpen, closeSettingsModal, activeTab, setActiveTab } =
     useSettingsModal();
   const t = useTranslations("settings");
+  const tLanguage = useTranslations("language");
+  const tTheme = useTranslations("theme");
   const isClosingRef = useRef(false);
+  const { theme, setTheme } = useTheme();
+  const { locale, setLocale } = useLanguage();
+  const [isPending, startTransition] = useTransition();
+
+  // Función para cambiar el idioma
+  const handleLocaleChange = (newLocale: string) => {
+    startTransition(() => {
+      setLocale(newLocale);
+    });
+  };
 
   // Función simple para manejar el cierre del modal
   const handleClose = useCallback(() => {
@@ -105,12 +127,8 @@ export function SettingsModal({
   const navItems = [
     { id: "general", name: t("general"), icon: Settings },
     { id: "users", name: t("users"), icon: Users },
-    { id: "notifications", name: t("notifications"), icon: Bell },
     { id: "appearance", name: t("appearance"), icon: Paintbrush },
-    { id: "messages", name: t("messages"), icon: MessageCircle },
     { id: "language", name: t("language"), icon: Globe },
-    { id: "accessibility", name: t("accessibility"), icon: Keyboard },
-    { id: "privacy", name: t("privacy"), icon: Lock },
   ];
 
   // Si el modal no está abierto, no renderizamos nada
@@ -210,17 +228,128 @@ export function SettingsModal({
                       <UsersTable users={users} columns={userColumns} />
                     </div>
                   )}
-                  {activeTab !== "general" && activeTab !== "users" && (
-                    <div className="flex flex-col gap-4">
+                  {activeTab === "appearance" && (
+                    <div>
                       <h2 className="text-2xl font-bold mb-6">
-                        {navItems.find((item) => item.id === activeTab)?.name ||
-                          t("comingSoon")}
+                        {t("appearance")}
                       </h2>
-                      <p className="text-muted-foreground">
-                        {t("featureNotAvailable")}
-                      </p>
+                      <div className="grid gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>{tTheme("title")}</CardTitle>
+                            <CardDescription>
+                              {tTheme("description")}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <RadioGroup
+                              defaultValue={theme}
+                              onValueChange={setTheme}
+                              className="flex flex-col space-y-3"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="light" id="light" />
+                                <Label
+                                  htmlFor="light"
+                                  className="flex items-center gap-2"
+                                >
+                                  <Sun className="h-4 w-4" />
+                                  {tTheme("light")}
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="dark" id="dark" />
+                                <Label
+                                  htmlFor="dark"
+                                  className="flex items-center gap-2"
+                                >
+                                  <Moon className="h-4 w-4" />
+                                  {tTheme("dark")}
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="system" id="system" />
+                                <Label htmlFor="system">
+                                  {tTheme("system")}
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          </CardContent>
+                        </Card>
+                      </div>
                     </div>
                   )}
+                  {activeTab === "language" && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">
+                        {t("language")}
+                      </h2>
+                      <div className="grid gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>{tLanguage("title")}</CardTitle>
+                            <CardDescription>
+                              {tLanguage("description")}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <RadioGroup
+                              defaultValue={locale}
+                              onValueChange={handleLocaleChange}
+                              className="flex flex-col space-y-3"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="en"
+                                  id="en"
+                                  disabled={isPending}
+                                />
+                                <Label
+                                  htmlFor="en"
+                                  className="flex items-center gap-2"
+                                >
+                                  {tLanguage("en")}
+                                  {locale === "en" && (
+                                    <Check className="h-4 w-4 ml-2" />
+                                  )}
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value="es"
+                                  id="es"
+                                  disabled={isPending}
+                                />
+                                <Label
+                                  htmlFor="es"
+                                  className="flex items-center gap-2"
+                                >
+                                  {tLanguage("es")}
+                                  {locale === "es" && (
+                                    <Check className="h-4 w-4 ml-2" />
+                                  )}
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  )}
+                  {activeTab !== "general" &&
+                    activeTab !== "users" &&
+                    activeTab !== "appearance" &&
+                    activeTab !== "language" && (
+                      <div className="flex flex-col gap-4">
+                        <h2 className="text-2xl font-bold mb-6">
+                          {navItems.find((item) => item.id === activeTab)
+                            ?.name || t("comingSoon")}
+                        </h2>
+                        <p className="text-muted-foreground">
+                          {t("featureNotAvailable")}
+                        </p>
+                      </div>
+                    )}
                 </>
               )}
             </div>

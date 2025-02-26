@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { Setting } from "@/types/settings";
 import {
@@ -20,7 +19,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -59,7 +57,7 @@ interface SettingsTableProps {
 
 export function SettingsTable({ settings, columns }: SettingsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+
   const router = useRouter();
   const t = useTranslations("settings");
 
@@ -173,18 +171,8 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
     },
   ];
 
-  // Filtrar configuraciones basadas en el término de búsqueda
-  const filteredSettings = settings.filter((setting) => {
-    const searchTermLower = searchTerm.toLowerCase();
-    return (
-      setting.workshop_id.toString().includes(searchTerm) ||
-      setting.workshop_name.toLowerCase().includes(searchTermLower) ||
-      setting.interaction_tone.toLowerCase().includes(searchTermLower)
-    );
-  });
-
   const table = useReactTable({
-    data: filteredSettings,
+    data: settings,
     columns: columnsWithActions,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -197,13 +185,7 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Input
-          placeholder={t("searchSettings")}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-end">
         <Sheet>
           <SheetTrigger asChild>
             <Button>

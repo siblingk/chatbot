@@ -26,7 +26,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -55,7 +54,7 @@ interface UsersTableProps {
 
 export function UsersTable({ users, columns }: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+
   const t = useTranslations("users");
   const router = useRouter();
 
@@ -175,18 +174,8 @@ export function UsersTable({ users, columns }: UsersTableProps) {
     }),
   ];
 
-  const filteredData = users.filter((user) => {
-    if (!searchTerm) return true;
-    return (
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.status &&
-        user.status.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
-
   const table = useReactTable({
-    data: filteredData,
+    data: users,
     columns: enhancedColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -199,13 +188,7 @@ export function UsersTable({ users, columns }: UsersTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Input
-          placeholder={t("searchUsers")}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-end">
         <Sheet>
           <SheetTrigger asChild>
             <Button>

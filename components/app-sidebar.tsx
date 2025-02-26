@@ -1,4 +1,7 @@
 "use client";
+
+export const dynamic = "force-dynamic";
+
 import {
   Plus,
   AlertTriangle,
@@ -25,7 +28,6 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useUserRole } from "@/hooks/useUserRole";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +41,6 @@ import { useSettingsModal } from "@/contexts/settings-modal-context";
 
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
-  const { isAdmin } = useUserRole();
   const { open } = useSidebar();
   const { openSettingsModal } = useSettingsModal();
   const t = useTranslations();
@@ -86,14 +87,13 @@ export function AppSidebar() {
         <SidebarMenu>
           {/* El selector de idioma se ha movido al modal de configuraciones */}
 
-          {isAdmin && (
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={openSettingsModal}>
-                <Settings className="h-4 w-4" />
-                {t("sidebar.settings")}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={openSettingsModal}>
+              <Settings className="h-4 w-4" />
+              {t("sidebar.settings")}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
           {user ? (
             <SidebarMenuItem>
               <DropdownMenu>

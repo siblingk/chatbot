@@ -10,6 +10,7 @@ import { User } from "@/app/actions/users";
 import { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export function GlobalSettingsModal() {
   const { isOpen, activeTab } = useSettingsModal();
@@ -20,21 +21,27 @@ export function GlobalSettingsModal() {
   const t = useTranslations();
   const isFetchingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { isAdmin } = useUserRole();
 
   // Función simplificada para obtener datos
   const fetchData = useCallback(async () => {
     // Evitar múltiples llamadas simultáneas o si el modal está cerrado
     if (isFetchingRef.current || !isOpen) return;
 
+    // Solo cargar datos de configuración general y usuarios si el usuario es administrador
+    if ((activeTab === "general" || activeTab === "users") && !isAdmin) {
+      return;
+    }
+
     isFetchingRef.current = true;
     setIsLoading(true);
     setHasError(false);
 
     try {
-      if (activeTab === "general") {
+      if (activeTab === "general" && isAdmin) {
         const settingsData = await getSettings();
         setSettings(settingsData);
-      } else if (activeTab === "users") {
+      } else if (activeTab === "users" && isAdmin) {
         const usersData = await getUsers();
         setUsers(usersData);
       }
@@ -55,7 +62,7 @@ export function GlobalSettingsModal() {
         timeoutRef.current = null;
       }, 300);
     }
-  }, [isOpen, activeTab, t]);
+  }, [isOpen, activeTab, t, isAdmin]);
 
   // Efecto para cargar datos cuando cambia la pestaña o se abre el modal
   useEffect(() => {

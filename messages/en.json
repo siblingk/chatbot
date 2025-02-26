@@ -3,6 +3,12 @@
     "title": "Siblingk AI",
     "description": "Siblingk - Workshop Management"
   },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "Sorry, the page you are looking for doesn't exist or has been moved.",
+    "backToHome": "Back to Home",
+    "goBack": "Go Back"
+  },
   "sidebar": {
     "settings": "Settings",
     "login": "Login",

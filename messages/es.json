@@ -3,6 +3,12 @@
     "title": "Siblingk AI",
     "description": "Siblingk - Gestión de Talleres"
   },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "Lo sentimos, la página que estás buscando no existe o ha sido movida.",
+    "backToHome": "Volver al inicio",
+    "goBack": "Regresar"
+  },
   "sidebar": {
     "settings": "Configuración",
     "login": "Iniciar Sesión",

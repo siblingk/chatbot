@@ -1,6 +1,8 @@
 import { getRequestConfig } from "next-intl/server";
 import { cookies } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 // Nombre de la cookie que almacena la preferencia de idioma del usuario
 const LOCALE_COOKIE_NAME = "user_locale";
 
@@ -9,17 +11,28 @@ export default getRequestConfig(async () => {
   let locale = "es"; // Idioma predeterminado
 
   try {
+    // Usar un bloque try-catch para manejar posibles errores al acceder a las cookies
     const cookieStore = await cookies();
     const localeCookie = cookieStore.get(LOCALE_COOKIE_NAME);
     if (localeCookie?.value) {
       locale = localeCookie.value;
     }
   } catch (error) {
+    // Si hay un error al acceder a las cookies, simplemente usamos el idioma predeterminado
     console.error("Error al leer la cookie de idioma:", error);
   }
 
-  return {
-    locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
-  };
+  // Cargar los mensajes para el idioma seleccionado
+  try {
+    const messages = (await import(`../../messages/${locale}.json`)).default;
+    return { locale, messages };
+  } catch (error) {
+    // Si hay un error al cargar los mensajes, volvemos al idioma predeterminado
+    console.error(
+      `Error al cargar los mensajes para el idioma ${locale}:`,
+      error
+    );
+    const defaultMessages = (await import(`../../messages/es.json`)).default;
+    return { locale: "es", messages: defaultMessages };
+  }
 });

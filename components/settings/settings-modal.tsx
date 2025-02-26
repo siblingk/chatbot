@@ -42,18 +42,12 @@ import {
 } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCallback, useRef, useTransition } from "react";
+import { useCallback, useRef, useTransition, useMemo, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/contexts/language-context";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface SettingsModalProps {
   settings: Setting[];
@@ -83,6 +77,7 @@ export function SettingsModal({
   const { theme, setTheme } = useTheme();
   const { locale, setLocale } = useLanguage();
   const [isPending, startTransition] = useTransition();
+  const { isAdmin } = useUserRole();
 
   // Función para cambiar el idioma
   const handleLocaleChange = (newLocale: string) => {
@@ -124,12 +119,30 @@ export function SettingsModal({
     [setActiveTab]
   );
 
-  const navItems = [
-    { id: "general", name: t("general"), icon: Settings },
-    { id: "users", name: t("users"), icon: Users },
-    { id: "appearance", name: t("appearance"), icon: Paintbrush },
-    { id: "language", name: t("language"), icon: Globe },
-  ];
+  // Filtrar las opciones de navegación según el rol del usuario
+  const navItems = useMemo(() => {
+    const items = [
+      { id: "appearance", name: t("appearance"), icon: Paintbrush },
+      { id: "language", name: t("language"), icon: Globe },
+    ];
+
+    // Solo los administradores pueden ver las opciones de configuración general y usuarios
+    if (isAdmin) {
+      items.unshift(
+        { id: "general", name: t("general"), icon: Settings },
+        { id: "users", name: t("users"), icon: Users }
+      );
+    }
+
+    return items;
+  }, [isAdmin, t]);
+
+  // Asegurarse de que el tab activo sea válido para el rol del usuario
+  useEffect(() => {
+    if (!isAdmin && (activeTab === "general" || activeTab === "users")) {
+      setActiveTab("appearance");
+    }
+  }, [isAdmin, activeTab, setActiveTab]);
 
   // Si el modal no está abierto, no renderizamos nada
   if (!isOpen) return null;
@@ -209,7 +222,7 @@ export function SettingsModal({
                 </div>
               ) : (
                 <>
-                  {activeTab === "general" && (
+                  {activeTab === "general" && isAdmin && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">
                         {t("generalSettings")}
@@ -220,7 +233,7 @@ export function SettingsModal({
                       />
                     </div>
                   )}
-                  {activeTab === "users" && (
+                  {activeTab === "users" && isAdmin && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">
                         {t("userManagement")}
@@ -233,49 +246,71 @@ export function SettingsModal({
                       <h2 className="text-2xl font-bold mb-6">
                         {t("appearance")}
                       </h2>
-                      <div className="grid gap-6">
-                        <Card>
-                          <CardHeader>
-                            <CardTitle>{tTheme("title")}</CardTitle>
-                            <CardDescription>
-                              {tTheme("description")}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
+                      <div className="space-y-8">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="text-lg font-medium">
+                                {tTheme("title")}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {tTheme("description")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="pl-1">
                             <RadioGroup
                               defaultValue={theme}
                               onValueChange={setTheme}
-                              className="flex flex-col space-y-3"
+                              className="flex flex-col space-y-4"
                             >
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3 rounded-md border p-3 hover:bg-accent">
                                 <RadioGroupItem value="light" id="light" />
                                 <Label
                                   htmlFor="light"
-                                  className="flex items-center gap-2"
+                                  className="flex items-center gap-2 cursor-pointer w-full"
                                 >
                                   <Sun className="h-4 w-4" />
-                                  {tTheme("light")}
+                                  <span className="flex-1">
+                                    {tTheme("light")}
+                                  </span>
+                                  {theme === "light" && (
+                                    <Check className="h-4 w-4 ml-auto text-primary" />
+                                  )}
                                 </Label>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3 rounded-md border p-3 hover:bg-accent">
                                 <RadioGroupItem value="dark" id="dark" />
                                 <Label
                                   htmlFor="dark"
-                                  className="flex items-center gap-2"
+                                  className="flex items-center gap-2 cursor-pointer w-full"
                                 >
                                   <Moon className="h-4 w-4" />
-                                  {tTheme("dark")}
+                                  <span className="flex-1">
+                                    {tTheme("dark")}
+                                  </span>
+                                  {theme === "dark" && (
+                                    <Check className="h-4 w-4 ml-auto text-primary" />
+                                  )}
                                 </Label>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3 rounded-md border p-3 hover:bg-accent">
                                 <RadioGroupItem value="system" id="system" />
-                                <Label htmlFor="system">
-                                  {tTheme("system")}
+                                <Label
+                                  htmlFor="system"
+                                  className="flex items-center gap-2 cursor-pointer w-full"
+                                >
+                                  <span className="flex-1">
+                                    {tTheme("system")}
+                                  </span>
+                                  {theme === "system" && (
+                                    <Check className="h-4 w-4 ml-auto text-primary" />
+                                  )}
                                 </Label>
                               </div>
                             </RadioGroup>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -284,21 +319,25 @@ export function SettingsModal({
                       <h2 className="text-2xl font-bold mb-6">
                         {t("language")}
                       </h2>
-                      <div className="grid gap-6">
-                        <Card>
-                          <CardHeader>
-                            <CardTitle>{tLanguage("title")}</CardTitle>
-                            <CardDescription>
-                              {tLanguage("description")}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent>
+                      <div className="space-y-8">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="text-lg font-medium">
+                                {tLanguage("title")}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {tLanguage("description")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="pl-1">
                             <RadioGroup
                               defaultValue={locale}
                               onValueChange={handleLocaleChange}
-                              className="flex flex-col space-y-3"
+                              className="flex flex-col space-y-4"
                             >
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3 rounded-md border p-3 hover:bg-accent">
                                 <RadioGroupItem
                                   value="en"
                                   id="en"
@@ -306,15 +345,17 @@ export function SettingsModal({
                                 />
                                 <Label
                                   htmlFor="en"
-                                  className="flex items-center gap-2"
+                                  className="flex items-center gap-2 cursor-pointer w-full"
                                 >
-                                  {tLanguage("en")}
+                                  <span className="flex-1">
+                                    {tLanguage("en")}
+                                  </span>
                                   {locale === "en" && (
-                                    <Check className="h-4 w-4 ml-2" />
+                                    <Check className="h-4 w-4 ml-auto text-primary" />
                                   )}
                                 </Label>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3 rounded-md border p-3 hover:bg-accent">
                                 <RadioGroupItem
                                   value="es"
                                   id="es"
@@ -322,17 +363,19 @@ export function SettingsModal({
                                 />
                                 <Label
                                   htmlFor="es"
-                                  className="flex items-center gap-2"
+                                  className="flex items-center gap-2 cursor-pointer w-full"
                                 >
-                                  {tLanguage("es")}
+                                  <span className="flex-1">
+                                    {tLanguage("es")}
+                                  </span>
                                   {locale === "es" && (
-                                    <Check className="h-4 w-4 ml-2" />
+                                    <Check className="h-4 w-4 ml-auto text-primary" />
                                   )}
                                 </Label>
                               </div>
                             </RadioGroup>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

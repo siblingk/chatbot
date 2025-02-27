@@ -23,7 +23,7 @@ import { createSetting, updateSetting } from "@/app/actions/settings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
+import { SheetClose } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -119,12 +119,6 @@ export function SettingsForm({ setting }: SettingsFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <SheetHeader>
-          <SheetTitle>
-            {setting ? t("editWorkshop") : t("createWorkshop")}
-          </SheetTitle>
-        </SheetHeader>
-
         <FormField
           control={form.control}
           name="workshop_id"

@@ -21,7 +21,7 @@ import { User, createUserAction, updateUserAction } from "@/app/actions/users";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
+import { SheetClose } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
@@ -104,10 +104,6 @@ export function UserForm({ user }: UserFormProps) {
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-6"
       >
-        <SheetHeader>
-          <SheetTitle>{user ? t("editUser") : t("inviteUser")}</SheetTitle>
-        </SheetHeader>
-
         <FormField
           control={form.control}
           name="email"

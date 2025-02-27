@@ -4,18 +4,17 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { useTranslations } from "next-intl";
+import { GoogleSignInButton } from "@/components/auth/auth-buttons";
+import { Separator } from "@/components/ui/separator";
 
 export default function SignUpPage() {
   const t = useTranslations("auth");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const [success, setSuccess] = useState(false);
 
   const handleSignUp = async (formData: FormData) => {
     setError("");
@@ -25,7 +24,6 @@ export default function SignUpPage() {
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
-    // Validate that passwords match
     if (password !== confirmPassword) {
       setError(t("passwordMismatch"));
       setLoading(false);
@@ -33,31 +31,48 @@ export default function SignUpPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        setError(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || t("signUpError"));
         return;
       }
 
-      // Redirect to verification page
-      router.push("/auth/verification");
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError(t("signUpError"));
-      }
+      setSuccess(true);
+    } catch {
+      setError(t("signUpError"));
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8 text-center">
+          <h2 className="mt-6 text-3xl font-bold">{t("verificationTitle")}</h2>
+          <p className="mt-2">{t("verificationMessage")}</p>
+          <p className="mt-2 text-sm">{t("checkSpam")}</p>
+          <div className="mt-6">
+            <Link
+              href="/auth/signin"
+              className="font-medium hover:underline text-primary"
+            >
+              {t("backToSignIn")}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -67,7 +82,20 @@ export default function SignUpPage() {
           <p className="mt-2 text-sm">{t("signUpSubtitle")}</p>
         </div>
 
-        <form action={handleSignUp} className="mt-8 space-y-6">
+        <GoogleSignInButton className="mt-4" />
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <Separator className="w-full" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              {t("orContinueWith")}
+            </span>
+          </div>
+        </div>
+
+        <form action={handleSignUp} className="space-y-6">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

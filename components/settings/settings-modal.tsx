@@ -4,7 +4,18 @@ import { ColumnDef } from "@tanstack/react-table";
 import { SettingsTable } from "./settings-table";
 import { UsersTable } from "../users/users-table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Settings, Users, Check, Moon, Sun, Bell } from "lucide-react";
+import {
+  Settings,
+  Check,
+  Moon,
+  Sun,
+  Bell,
+  Store,
+  Link,
+  MessageSquare,
+  Shield,
+  Receipt,
+} from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
 import { useTranslations } from "next-intl";
@@ -18,12 +29,45 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Shop } from "@/types/shops";
+import { ShopsTable } from "../shops/shops-table";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createShopColumns } from "../shops/shop-columns";
+import { ConnectedAppsTab } from "./connected-apps-tab";
+import { ConnectedAppsConfig } from "@/types/connected-apps";
+import { TwilioSendGridTab } from "./twilio-sendgrid-tab";
+import { TwilioSendGridConfig } from "@/types/twilio-sendgrid";
+import { SecurityTab } from "./security-tab";
+import { SecurityConfig } from "@/types/security";
+import { SubscriptionBillingTab } from "./subscription-billing-tab";
+import { SubscriptionBillingConfig } from "@/types/subscription-billing";
 
 interface SettingsModalProps {
   settings: Setting[];
   users: User[];
+  shops: Shop[];
   settingsColumns: ColumnDef<Setting>[];
   userColumns?: ColumnDef<User>[];
+  connectedAppsConfig?: ConnectedAppsConfig;
+  onUpdateConnectedApps?: (
+    config: Partial<ConnectedAppsConfig>
+  ) => Promise<void>;
+  twilioSendGridConfig?: TwilioSendGridConfig;
+  onUpdateTwilioSendGrid?: (
+    config: Partial<TwilioSendGridConfig>
+  ) => Promise<void>;
+  securityConfig?: SecurityConfig;
+  onUpdateSecurity?: (config: Partial<SecurityConfig>) => Promise<void>;
+  onLogoutSession?: (device: string) => Promise<void>;
+  onUpdateUserRole?: (userId: string, role: string) => Promise<void>;
+  onRemoveUser?: (userId: string) => Promise<void>;
+  subscriptionBillingConfig?: SubscriptionBillingConfig;
+  onUpdateSubscriptionBilling?: (
+    config: Partial<SubscriptionBillingConfig>
+  ) => Promise<void>;
+  onChangePlan?: () => Promise<void>;
+  onUpdatePaymentInfo?: () => Promise<void>;
   isLoading?: boolean;
   hasError?: boolean;
   onRetry?: () => void;
@@ -32,8 +76,22 @@ interface SettingsModalProps {
 export function SettingsModal({
   settings,
   users,
+  shops,
   settingsColumns,
   userColumns = [],
+  connectedAppsConfig,
+  onUpdateConnectedApps,
+  twilioSendGridConfig,
+  onUpdateTwilioSendGrid,
+  securityConfig,
+  onUpdateSecurity,
+  onLogoutSession,
+  onUpdateUserRole,
+  onRemoveUser,
+  subscriptionBillingConfig,
+  onUpdateSubscriptionBilling,
+  onChangePlan,
+  onUpdatePaymentInfo,
   isLoading = false,
   hasError = false,
   onRetry,
@@ -92,15 +150,26 @@ export function SettingsModal({
 
   // Filtrar las opciones de navegación según el rol del usuario
   const navItems = useMemo(() => {
-    const items = [
-      { id: "notifications", name: t("notifications"), icon: Bell },
-    ];
+    const items = [];
 
     // Solo los administradores pueden ver las opciones de configuración general y usuarios
     if (isAdmin) {
       items.unshift(
         { id: "workshops", name: t("workshops"), icon: Settings },
-        { id: "users", name: t("users"), icon: Users }
+        { id: "shop_members", name: t("shopMembers"), icon: Store },
+        { id: "notifications", name: t("notifications"), icon: Bell },
+        { id: "connected_apps", name: t("connectedApps"), icon: Link },
+        {
+          id: "twilio_sendgrid",
+          name: t("twilioSendgrid"),
+          icon: MessageSquare,
+        },
+        { id: "security", name: t("security"), icon: Shield },
+        {
+          id: "subscription_billing",
+          name: t("subscriptionBilling"),
+          icon: Receipt,
+        }
       );
     }
 
@@ -112,7 +181,10 @@ export function SettingsModal({
 
   // Asegurarse de que el tab activo sea válido para el rol del usuario
   useEffect(() => {
-    if (!isAdmin && (activeTab === "workshops" || activeTab === "users")) {
+    if (
+      !isAdmin &&
+      (activeTab === "workshops" || activeTab === "shop_members")
+    ) {
       setActiveTab("general");
     }
   }, [isAdmin, activeTab, setActiveTab]);
@@ -179,12 +251,78 @@ export function SettingsModal({
                       />
                     </div>
                   )}
-                  {activeTab === "users" && isAdmin && (
+                  {activeTab === "shop_members" && isAdmin && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">
-                        {t("userManagement")}
+                        {t("shopMembers")}
                       </h2>
-                      <UsersTable users={users} columns={userColumns} />
+                      <Tabs defaultValue="shops" className="w-full">
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="shops">
+                            {t("workshops")}
+                          </TabsTrigger>
+                          <TabsTrigger value="users">{t("users")}</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="shops">
+                          <ShopsTable
+                            shops={shops}
+                            columns={createShopColumns(t)}
+                          />
+                        </TabsContent>
+                        <TabsContent value="users">
+                          <UsersTable users={users} columns={userColumns} />
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+                  )}
+                  {activeTab === "connected_apps" && isAdmin && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">
+                        {t("connectedApps")}
+                      </h2>
+                      <ConnectedAppsTab
+                        config={connectedAppsConfig}
+                        onUpdate={onUpdateConnectedApps}
+                      />
+                    </div>
+                  )}
+                  {activeTab === "twilio_sendgrid" && isAdmin && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">
+                        {t("twilioSendgrid")}
+                      </h2>
+                      <TwilioSendGridTab
+                        config={twilioSendGridConfig}
+                        onUpdate={onUpdateTwilioSendGrid}
+                      />
+                    </div>
+                  )}
+                  {activeTab === "security" && isAdmin && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">
+                        {t("security")}
+                      </h2>
+                      <SecurityTab
+                        config={securityConfig}
+                        onUpdate={onUpdateSecurity}
+                        onLogoutSession={onLogoutSession}
+                        onUpdateUserRole={onUpdateUserRole}
+                        onRemoveUser={onRemoveUser}
+                      />
+                    </div>
+                  )}
+                  {activeTab === "subscription_billing" && isAdmin && (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">
+                        {t("subscriptionBilling")}
+                      </h2>
+                      <SubscriptionBillingTab
+                        config={subscriptionBillingConfig}
+                        onUpdate={onUpdateSubscriptionBilling}
+                        onChangePlan={onChangePlan}
+                        onUpdatePaymentInfo={onUpdatePaymentInfo}
+                        locale={locale}
+                      />
                     </div>
                   )}
                   {activeTab === "general" && (
@@ -590,11 +728,15 @@ export function SettingsModal({
                     </div>
                   )}
                   {activeTab !== "workshops" &&
-                    activeTab !== "users" &&
+                    activeTab !== "shop_members" &&
                     activeTab !== "appearance" &&
                     activeTab !== "language" &&
                     activeTab !== "notifications" &&
-                    activeTab !== "general" && (
+                    activeTab !== "general" &&
+                    activeTab !== "connected_apps" &&
+                    activeTab !== "twilio_sendgrid" &&
+                    activeTab !== "security" &&
+                    activeTab !== "subscription_billing" && (
                       <div className="flex flex-col gap-4">
                         <h2 className="text-2xl font-bold mb-6">
                           {navItems.find((item) => item.id === activeTab)

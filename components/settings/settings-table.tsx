@@ -49,17 +49,22 @@ import {
 } from "@/components/ui/sheet";
 import { SettingsForm } from "./settings-form";
 import { useRouter } from "next/navigation";
+import { createSettingsColumns } from "./columns";
 
 interface SettingsTableProps {
   settings: Setting[];
-  columns: ColumnDef<Setting>[];
+  columns?: ColumnDef<Setting>[];
 }
 
-export function SettingsTable({ settings, columns }: SettingsTableProps) {
+export function SettingsTable({ settings, columns = [] }: SettingsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const router = useRouter();
   const t = useTranslations("settings");
+
+  // Usar las columnas proporcionadas o crear nuevas con las traducciones
+  const settingsColumns =
+    columns.length > 0 ? columns : createSettingsColumns(t);
 
   // Función para eliminar un setting
   const confirmDelete = async (settingId: string | number) => {
@@ -88,9 +93,9 @@ export function SettingsTable({ settings, columns }: SettingsTableProps) {
 
   // Añadir columna de acciones
   const columnsWithActions: ColumnDef<Setting>[] = [
-    ...columns,
+    ...settingsColumns,
     {
-      id: "actions",
+      id: "actions_settings",
       header: t("actions"),
       cell: ({ row }) => {
         const setting = row.original;

@@ -62,6 +62,24 @@ export async function signIn(formData: FormData) {
   return { success: true };
 }
 
+export async function signInWithGoogle() {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { url: data.url };
+}
+
 export async function signOut() {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);

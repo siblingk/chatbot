@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { GoogleSignInButton } from "@/components/auth/auth-buttons";
+import { Separator } from "@/components/ui/separator";
 
 export default function SignInPage() {
   const t = useTranslations("auth");
@@ -46,7 +48,20 @@ export default function SignInPage() {
           <p className="mt-2 text-sm">{t("signInSubtitle")}</p>
         </div>
 
-        <form action={handleSignIn} className="mt-8 space-y-6">
+        <GoogleSignInButton className="mt-4" />
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <Separator className="w-full" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              {t("orContinueWith")}
+            </span>
+          </div>
+        </div>
+
+        <form action={handleSignIn} className="space-y-6">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

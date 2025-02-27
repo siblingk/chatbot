@@ -1,35 +1,33 @@
 "use client";
-
 import { ColumnDef } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { User } from "@/app/actions/users";
 import { Switch } from "@/components/ui/switch";
 
 // For client components that need to use the columns
-export const userColumns: ColumnDef<User>[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const createUserColumns = (t: any): ColumnDef<User>[] => [
   {
     accessorKey: "email",
-    header: "Email",
+    header: t("email"),
   },
   {
     accessorKey: "role",
-    header: "Rol",
+    header: t("role"),
     cell: ({ row }) => {
       const value = row.getValue("role") as string;
       return (
         <Badge variant={value === "admin" ? "default" : "secondary"}>
-          {value === "admin" ? "Administrador" : "Usuario"}
+          {value === "admin" ? t("admin") : t("user")}
         </Badge>
       );
     },
   },
   {
     accessorKey: "created_at",
-    header: "Fecha de creación",
+    header: t("createdAt"),
     cell: ({ row }) => {
       const value = row.getValue("created_at") as string;
       return value
@@ -39,7 +37,7 @@ export const userColumns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "status",
-    header: "Estado",
+    header: t("status"),
     cell: ({ row, table }) => {
       const user = row.original;
       const isActive = user.status === "active";
@@ -62,32 +60,9 @@ export const userColumns: ColumnDef<User>[] = [
             variant={isActive ? "default" : "destructive"}
             className={isActive ? "bg-green-500" : ""}
           >
-            {isActive ? "Activo" : "Inactivo"}
+            {isActive ? t("active") : t("inactive")}
           </Badge>
         </div>
-      );
-    },
-  },
-  {
-    id: "actions",
-    header: "Cambiar Rol",
-    cell: ({ row, table }) => {
-      const user = row.original;
-      const isAdmin = user.role === "admin";
-
-      return (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            // @ts-expect-error - El meta está tipado correctamente en tiempo de ejecución
-            table.options.meta?.onToggleAdmin?.(user);
-          }}
-          className={isAdmin ? "text-blue-600" : "text-gray-600"}
-        >
-          <Shield className="mr-2 h-4 w-4" />
-          {isAdmin ? "Quitar Admin" : "Hacer Admin"}
-        </Button>
       );
     },
   },

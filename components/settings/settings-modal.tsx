@@ -1,7 +1,7 @@
 "use client";
 import { Setting } from "@/types/settings";
 import { ColumnDef } from "@tanstack/react-table";
-import { SettingsTable } from "./settings-table";
+
 import { UsersTable } from "../users/users-table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
@@ -15,11 +15,11 @@ import {
   MessageSquare,
   Shield,
   Receipt,
+  Bot,
 } from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
 import { useTranslations } from "next-intl";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useRef, useTransition, useMemo, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/contexts/language-context";
@@ -42,6 +42,8 @@ import { SecurityTab } from "./security-tab";
 import { SecurityConfig } from "@/types/security";
 import { SubscriptionBillingTab } from "./subscription-billing-tab";
 import { SubscriptionBillingConfig } from "@/types/subscription-billing";
+import { AgentsTab } from "./agents-tab";
+import { Agent, AgentConfig } from "@/types/agents";
 
 interface SettingsModalProps {
   settings: Setting[];
@@ -68,16 +70,17 @@ interface SettingsModalProps {
   ) => Promise<void>;
   onChangePlan?: () => Promise<void>;
   onUpdatePaymentInfo?: () => Promise<void>;
-  isLoading?: boolean;
+  agentConfig?: AgentConfig;
+  onUpdateAgents?: (agent: Agent) => Promise<void>;
+  onDeleteAgent?: (agentId: string) => Promise<void>;
   hasError?: boolean;
   onRetry?: () => void;
 }
 
 export function SettingsModal({
-  settings,
   users,
   shops,
-  settingsColumns,
+
   userColumns = [],
   connectedAppsConfig,
   onUpdateConnectedApps,
@@ -92,7 +95,9 @@ export function SettingsModal({
   onUpdateSubscriptionBilling,
   onChangePlan,
   onUpdatePaymentInfo,
-  isLoading = false,
+  agentConfig,
+  onUpdateAgents,
+  onDeleteAgent,
   hasError = false,
   onRetry,
 }: SettingsModalProps) {
@@ -155,8 +160,8 @@ export function SettingsModal({
     // Solo los administradores pueden ver las opciones de configuración general y usuarios
     if (isAdmin) {
       items.unshift(
-        { id: "workshops", name: t("workshops"), icon: Settings },
         { id: "shop_members", name: t("shopMembers"), icon: Store },
+        { id: "agents", name: t("agents"), icon: Bot },
         { id: "notifications", name: t("notifications"), icon: Bell },
         { id: "connected_apps", name: t("connectedApps"), icon: Link },
         {
@@ -221,12 +226,7 @@ export function SettingsModal({
           <div className="flex flex-1 flex-col overflow-hidden bg-background p-4">
             {/* Área de contenido scrollable */}
             <div className="flex-1 overflow-y-auto px-4 pb-24 md:pb-4">
-              {isLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-8 w-[250px]" />
-                  <Skeleton className="h-[500px] w-full" />
-                </div>
-              ) : hasError ? (
+              {hasError ? (
                 <div className="flex flex-col items-center justify-center h-full">
                   <p className="text-destructive mb-4">{t("errorLoading")}</p>
                   {onRetry && (
@@ -240,17 +240,6 @@ export function SettingsModal({
                 </div>
               ) : (
                 <>
-                  {activeTab === "workshops" && isAdmin && (
-                    <div>
-                      <h2 className="text-2xl font-bold mb-6">
-                        {t("workshopSettings")}
-                      </h2>
-                      <SettingsTable
-                        settings={settings}
-                        columns={settingsColumns}
-                      />
-                    </div>
-                  )}
                   {activeTab === "shop_members" && isAdmin && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">
@@ -270,9 +259,23 @@ export function SettingsModal({
                           />
                         </TabsContent>
                         <TabsContent value="users">
-                          <UsersTable users={users} columns={userColumns} />
+                          <UsersTable
+                            users={users}
+                            columns={userColumns}
+                            onUpdateUserRole={onUpdateUserRole}
+                            onRemoveUser={onRemoveUser}
+                          />
                         </TabsContent>
                       </Tabs>
+                    </div>
+                  )}
+                  {activeTab === "agents" && isAdmin && (
+                    <div>
+                      <AgentsTab
+                        agentConfig={agentConfig}
+                        onUpdateAgents={onUpdateAgents}
+                        onDeleteAgent={onDeleteAgent}
+                      />
                     </div>
                   )}
                   {activeTab === "connected_apps" && isAdmin && (
@@ -736,7 +739,8 @@ export function SettingsModal({
                     activeTab !== "connected_apps" &&
                     activeTab !== "twilio_sendgrid" &&
                     activeTab !== "security" &&
-                    activeTab !== "subscription_billing" && (
+                    activeTab !== "subscription_billing" &&
+                    activeTab !== "agents" && (
                       <div className="flex flex-col gap-4">
                         <h2 className="text-2xl font-bold mb-6">
                           {navItems.find((item) => item.id === activeTab)

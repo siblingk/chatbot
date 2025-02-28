@@ -1,9 +1,9 @@
 "use server";
 
 import { WebhookRequest, Message } from "@/types/chat";
+import { generateUUID } from "@/utils/uuid";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { generateUUID } from "@/lib/utils/uuid";
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL as string;
 if (!WEBHOOK_URL) {

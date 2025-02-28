@@ -3,7 +3,7 @@
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
 import { Message } from "@/types/chat";
-import { generateUUID } from "@/lib/utils/uuid";
+
 import {
   sendMessage,
   getOrCreateSessionId,
@@ -14,6 +14,7 @@ import { useChat } from "@/contexts/chat-context";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
+import { generateUUID } from "@/utils/uuid";
 
 interface ChatContainerProps {
   workshopId?: string;

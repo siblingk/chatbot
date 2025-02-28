@@ -5,10 +5,12 @@ import { SettingsModal } from "./settings-modal";
 import { getSettings } from "@/app/actions/settings";
 import { getUsers } from "@/app/actions/users";
 import { getShops } from "@/app/actions/shops";
+import { getAgents, updateAgent, deleteAgent } from "@/app/actions/agents";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
 import { Setting } from "@/types/settings";
 import { User } from "@/app/actions/users";
 import { Shop } from "@/types/shops";
+import { Agent } from "@/types/agents";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -21,7 +23,7 @@ export function GlobalSettingsModal() {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [hasError, setHasError] = useState(false);
   const t = useTranslations();
   const tSettings = useTranslations("settings");
@@ -34,7 +36,6 @@ export function GlobalSettingsModal() {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
-    setIsLoading(true);
     setHasError(false);
 
     try {
@@ -50,16 +51,56 @@ export function GlobalSettingsModal() {
         // Obtener tiendas
         const shopsData = await getShops();
         setShops(shopsData);
+
+        // Obtener agentes de Supabase
+        const agentsData = await getAgents();
+        setAgents(agentsData);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
       setHasError(true);
       toast.error(t("settings.errorLoading"));
     } finally {
-      setIsLoading(false);
       isFetchingRef.current = false;
     }
   }, [isAdmin, t]);
+
+  // Manejadores para las acciones de agentes
+  const handleUpdateAgent = useCallback(async (agent: Agent) => {
+    try {
+      await updateAgent(agent);
+
+      // Actualizamos el estado local
+      setAgents((prevAgents) => {
+        const index = prevAgents.findIndex((a) => a.id === agent.id);
+        if (index >= 0) {
+          const newAgents = [...prevAgents];
+          newAgents[index] = agent;
+          return newAgents;
+        }
+        return [...prevAgents, agent];
+      });
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error al actualizar agente:", error);
+      return Promise.reject(error);
+    }
+  }, []);
+
+  const handleDeleteAgent = useCallback(async (agentId: string) => {
+    try {
+      await deleteAgent(agentId);
+
+      // Actualizamos el estado local
+      setAgents((prevAgents) => prevAgents.filter((a) => a.id !== agentId));
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error al eliminar agente:", error);
+      return Promise.reject(error);
+    }
+  }, []);
 
   // Cargar datos cuando se abre el modal o cambia la pestaña
   useEffect(() => {
@@ -90,7 +131,9 @@ export function GlobalSettingsModal() {
       shops={shops}
       settingsColumns={createSettingsColumns(tSettings)}
       userColumns={createUserColumns(tUsers)}
-      isLoading={isLoading}
+      agentConfig={{ agents }}
+      onUpdateAgents={handleUpdateAgent}
+      onDeleteAgent={handleDeleteAgent}
       hasError={hasError}
       onRetry={fetchData}
     />

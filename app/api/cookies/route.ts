@@ -1,6 +1,6 @@
+import { generateUUID } from "@/utils/uuid";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { generateUUID } from "@/lib/utils/uuid";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,

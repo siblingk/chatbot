@@ -15,7 +15,6 @@ import {
   MessageSquare,
   Shield,
   Receipt,
-  Bot,
 } from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
@@ -42,8 +41,6 @@ import { SecurityTab } from "./security-tab";
 import { SecurityConfig } from "@/types/security";
 import { SubscriptionBillingTab } from "./subscription-billing-tab";
 import { SubscriptionBillingConfig } from "@/types/subscription-billing";
-import { AgentsTab } from "./agents-tab";
-import { Agent, AgentConfig } from "@/types/agents";
 
 interface SettingsModalProps {
   settings: Setting[];
@@ -70,9 +67,6 @@ interface SettingsModalProps {
   ) => Promise<void>;
   onChangePlan?: () => Promise<void>;
   onUpdatePaymentInfo?: () => Promise<void>;
-  agentConfig?: AgentConfig;
-  onUpdateAgents?: (agent: Agent) => Promise<void>;
-  onDeleteAgent?: (agentId: string) => Promise<void>;
   hasError?: boolean;
   onRetry?: () => void;
 }
@@ -80,7 +74,6 @@ interface SettingsModalProps {
 export function SettingsModal({
   users,
   shops,
-
   userColumns = [],
   connectedAppsConfig,
   onUpdateConnectedApps,
@@ -95,9 +88,6 @@ export function SettingsModal({
   onUpdateSubscriptionBilling,
   onChangePlan,
   onUpdatePaymentInfo,
-  agentConfig,
-  onUpdateAgents,
-  onDeleteAgent,
   hasError = false,
   onRetry,
 }: SettingsModalProps) {
@@ -155,33 +145,41 @@ export function SettingsModal({
 
   // Filtrar las opciones de navegación según el rol del usuario
   const navItems = useMemo(() => {
-    const items = [];
+    const options = [{ value: "general", label: t("general"), icon: Settings }];
 
-    // Solo los administradores pueden ver las opciones de configuración general y usuarios
     if (isAdmin) {
-      items.unshift(
-        { id: "shop_members", name: t("shopMembers"), icon: Store },
-        { id: "agents", name: t("agents"), icon: Bot },
-        { id: "notifications", name: t("notifications"), icon: Bell },
-        { id: "connected_apps", name: t("connectedApps"), icon: Link },
+      options.push(
         {
-          id: "twilio_sendgrid",
-          name: t("twilioSendgrid"),
+          value: "shop_members",
+          label: t("shopMembers"),
+          icon: Store,
+        },
+        {
+          value: "notifications",
+          label: t("notifications"),
+          icon: Bell,
+        },
+        {
+          value: "connected_apps",
+          label: t("connectedApps"),
+          icon: Link,
+        },
+
+        {
+          value: "twilio_sendgrid",
+          label: t("twilioSendgrid"),
           icon: MessageSquare,
         },
-        { id: "security", name: t("security"), icon: Shield },
+        { value: "security", label: t("security"), icon: Shield },
         {
-          id: "subscription_billing",
-          name: t("subscriptionBilling"),
+          value: "subscription_billing",
+          label: t("subscriptionBilling"),
           icon: Receipt,
         }
       );
     }
 
-    // Agregar la pestaña general para todos los usuarios
-    items.unshift({ id: "general", name: t("general"), icon: Settings });
-
-    return items;
+    return options;
   }, [isAdmin, t]);
 
   // Asegurarse de que el tab activo sea válido para el rol del usuario
@@ -206,17 +204,17 @@ export function SettingsModal({
             <nav className="flex flex-col gap-2 p-4">
               {navItems.map((item) => (
                 <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
+                  key={item.value}
+                  onClick={() => handleTabChange(item.value)}
                   className={cn(
                     "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    activeTab === item.id
+                    activeTab === item.value
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  <span>{item.name}</span>
+                  <span>{item.label}</span>
                 </button>
               ))}
             </nav>
@@ -263,19 +261,9 @@ export function SettingsModal({
                             users={users}
                             columns={userColumns}
                             onUpdateUserRole={onUpdateUserRole}
-                            onRemoveUser={onRemoveUser}
                           />
                         </TabsContent>
                       </Tabs>
-                    </div>
-                  )}
-                  {activeTab === "agents" && isAdmin && (
-                    <div>
-                      <AgentsTab
-                        agentConfig={agentConfig}
-                        onUpdateAgents={onUpdateAgents}
-                        onDeleteAgent={onDeleteAgent}
-                      />
                     </div>
                   )}
                   {activeTab === "connected_apps" && isAdmin && (
@@ -739,12 +727,11 @@ export function SettingsModal({
                     activeTab !== "connected_apps" &&
                     activeTab !== "twilio_sendgrid" &&
                     activeTab !== "security" &&
-                    activeTab !== "subscription_billing" &&
-                    activeTab !== "agents" && (
+                    activeTab !== "subscription_billing" && (
                       <div className="flex flex-col gap-4">
                         <h2 className="text-2xl font-bold mb-6">
-                          {navItems.find((item) => item.id === activeTab)
-                            ?.name || t("comingSoon")}
+                          {navItems.find((item) => item.value === activeTab)
+                            ?.label || t("comingSoon")}
                         </h2>
                         <p className="text-muted-foreground">
                           {t("featureNotAvailable")}
@@ -761,11 +748,11 @@ export function SettingsModal({
                 <nav className="flex min-w-full items-center px-2">
                   {navItems.map((item) => (
                     <button
-                      key={item.id}
-                      onClick={() => handleTabChange(item.id)}
+                      key={item.value}
+                      onClick={() => handleTabChange(item.value)}
                       className={cn(
                         "flex flex-1 w-full flex-col items-center gap-1 p-2 text-xs text-wrap font-medium transition-colors",
-                        activeTab === item.id
+                        activeTab === item.value
                           ? "text-primary"
                           : "text-muted-foreground hover:text-primary"
                       )}
@@ -773,14 +760,14 @@ export function SettingsModal({
                       <div
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-md",
-                          activeTab === item.id
+                          activeTab === item.value
                             ? "bg-primary/10"
                             : "hover:bg-muted"
                         )}
                       >
                         <item.icon className="h-5 w-5" />
                       </div>
-                      <span className="truncate">{item.name}</span>
+                      <span className="truncate">{item.label}</span>
                     </button>
                   ))}
                 </nav>

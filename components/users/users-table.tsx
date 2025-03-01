@@ -3,8 +3,8 @@
 import { useState } from "react";
 import {
   User,
-  // activateUserAction,
-  // deactivateUserAction,
+  activateUserAction,
+  deactivateUserAction,
   toggleUserRoleAction,
 } from "@/app/actions/users";
 import {
@@ -15,7 +15,6 @@ import {
   getPaginationRowModel,
   SortingState,
   getSortedRowModel,
-  Row,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -38,13 +37,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { UserForm } from "./user-form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { createUserColumns } from "./user-columns";
 
@@ -52,14 +44,12 @@ interface UsersTableProps {
   users: User[];
   columns?: ColumnDef<User>[];
   onUpdateUserRole?: (userId: string, role: string) => Promise<void>;
-  onRemoveUser?: (userId: string) => Promise<void>;
 }
 
 export function UsersTable({
   users,
   columns = [],
   onUpdateUserRole,
-  onRemoveUser,
 }: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -69,25 +59,22 @@ export function UsersTable({
   // Usar las columnas proporcionadas o crear nuevas con las traducciones
   const userColumns = columns.length > 0 ? columns : createUserColumns(t);
 
-  const handleRoleChange = async (user: User, newRole: string) => {
-    if (!user || !user.id) {
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    if (!userId) {
       toast.error(t("error"));
-      console.error("ID de usuario inválido para cambiar rol:", user);
+      console.error("ID de usuario inválido para cambiar rol");
       return;
     }
 
-    // Solo hacemos el cambio si el rol es diferente al actual
-    if (user.role === newRole) return;
-
     try {
       if (onUpdateUserRole) {
-        await onUpdateUserRole(user.id, newRole);
+        await onUpdateUserRole(userId, newRole);
         toast.success(
           newRole === "admin" ? t("adminGranted") : t("adminRemoved")
         );
         router.refresh();
       } else {
-        const result = await toggleUserRoleAction(user.id);
+        const result = await toggleUserRoleAction(userId);
 
         if (result.message && !result.message.includes("Error")) {
           toast.success(
@@ -104,67 +91,39 @@ export function UsersTable({
     }
   };
 
-  const handleRemoveUser = async (userId: string) => {
+  const handleStatusChange = async (
+    userId: string,
+    newStatus: "active" | "inactive"
+  ) => {
     if (!userId) {
       toast.error(t("error"));
-      console.error("ID de usuario inválido para eliminar");
+      console.error("ID de usuario inválido para cambiar estado");
       return;
     }
 
     try {
-      if (onRemoveUser) {
-        await onRemoveUser(userId);
-        toast.success(t("userRemoved"));
+      const result =
+        newStatus === "active"
+          ? await activateUserAction(userId)
+          : await deactivateUserAction(userId);
+
+      if (result.message && !result.message.includes("Error")) {
+        toast.success(
+          newStatus === "active" ? t("userActivated") : t("userDeactivated")
+        );
         router.refresh();
       } else {
-        // Implementación por defecto si no se proporciona onRemoveUser
-        toast.error(t("removeNotImplemented"));
+        toast.error(result.message || t("error"));
       }
     } catch (error) {
-      console.error("Error al eliminar usuario:", error);
+      console.error("Error al cambiar estado:", error);
       toast.error(t("error"));
     }
   };
 
-  // Modificamos las columnas para incluir selects para estado y rol
-  const tableColumns = [
-    ...userColumns,
-    {
-      id: "actions",
-      cell: ({ row }: { row: Row<User> }) => {
-        const user = row.original;
-        return (
-          <div className="flex justify-end gap-2">
-            <Select
-              value={user.role}
-              onValueChange={(value) => handleRoleChange(user, value)}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue placeholder={t("selectRole")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">{t("user")}</SelectItem>
-                <SelectItem value="admin">{t("admin")}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => handleRemoveUser(user.id)}
-              className="ml-2"
-            >
-              {t("remove")}
-            </Button>
-          </div>
-        );
-      },
-    },
-  ];
-
   const table = useReactTable({
     data: users,
-    columns: tableColumns,
+    columns: userColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
@@ -172,10 +131,15 @@ export function UsersTable({
     state: {
       sorting,
     },
+    meta: {
+      onRoleChange: handleRoleChange,
+      onActivate: (userId: string) => handleStatusChange(userId, "active"),
+      onDeactivate: (userId: string) => handleStatusChange(userId, "inactive"),
+    },
   });
 
   return (
-    <div>
+    <div className="space-y-4">
       <div className="flex items-center justify-between py-4">
         <h2 className="text-xl font-semibold">{t("usersList")}</h2>
         <Sheet>
@@ -234,10 +198,10 @@ export function UsersTable({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={tableColumns.length}
+                  colSpan={userColumns.length}
                   className="h-24 text-center"
                 >
-                  {t("noUsers")}
+                  {users.length === 0 ? t("noUsers") : t("noResults")}
                 </TableCell>
               </TableRow>
             )}

@@ -14,7 +14,7 @@ export function SignOutButton() {
         type="submit"
         className="flex text-sm items-center gap-2 px-2.5 py-1.5"
       >
-        <LogOut className="h-4 w-4" />
+        <LogOut className="h-4 w-4 mr-1" />
         {t("signOut")}
       </button>
     </form>

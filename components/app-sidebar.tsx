@@ -7,9 +7,9 @@ import {
   AlertTriangle,
   Car,
   Settings,
-  User2,
   ChevronUp,
   LogIn,
+  Bot,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,12 +39,20 @@ import {
 import { SignOutButton } from "./auth/auth-buttons";
 import Link from "next/link";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export function AppSidebar() {
   const { user, isEmailVerified } = useAuth();
+  const { isAdmin } = useUserRole();
   const { open } = useSidebar();
   const { openSettingsModal } = useSettingsModal();
   const t = useTranslations();
+
+  // Obtener las iniciales del email del usuario para el avatar fallback
+  const getUserInitials = () => {
+    if (!user || !user.email) return "U";
+    return user.email.charAt(0).toUpperCase();
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -87,19 +96,15 @@ export function AppSidebar() {
         <SidebarMenu>
           {/* El selector de idioma se ha movido al modal de configuraciones */}
 
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={openSettingsModal}>
-              <Settings className="h-4 w-4" />
-              {t("sidebar.settings")}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
           {user ? (
             <SidebarMenuItem>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
-                    <User2 />
+                    <Avatar className="h-6 w-6 mr-2">
+                      <AvatarImage src={user?.user_metadata?.avatar_url} />
+                      <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                    </Avatar>
                     <span>{user.email}</span>
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
@@ -111,6 +116,18 @@ export function AppSidebar() {
                     open ? "w-[--radix-popper-anchor-width]" : "w-full"
                   }`}
                 >
+                  <DropdownMenuItem onClick={openSettingsModal}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    {t("sidebar.settings")}
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href={`/agents/${user?.id}`}>
+                        <Bot className="mr-2 h-4 w-4" />
+                        {t("settings.agents")}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <SignOutButton />
                   </DropdownMenuItem>
@@ -120,12 +137,38 @@ export function AppSidebar() {
           ) : (
             <>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/auth/signin">
-                    <LogIn className="h-4 w-4" />
-                    {t("auth.signIn")}
-                  </Link>
-                </SidebarMenuButton>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton>
+                      <Avatar className="h-4 w-4 mr-2">
+                        <AvatarFallback>U</AvatarFallback>
+                      </Avatar>
+                      <span>{t("auth.guest")}</span>
+                      <ChevronUp className="ml-auto" />
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    side={open ? "top" : "right"}
+                    align={open ? "start" : "end"}
+                    className={`${
+                      open ? "w-[--radix-popper-anchor-width]" : "w-full"
+                    }`}
+                  >
+                    <DropdownMenuItem onClick={openSettingsModal}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      {t("sidebar.settings")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/auth/signin"
+                        className="flex items-center gap-4"
+                      >
+                        <LogIn className="mr-2 h-4 w-4" />
+                        {t("auth.signIn")}
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </SidebarMenuItem>
             </>
           )}

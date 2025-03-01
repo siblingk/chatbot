@@ -398,8 +398,6 @@ export function AgentsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-2xl font-bold">{t("agents")}</h2>
-
       <Button className="self-end" onClick={() => setIsCreateSheetOpen(true)}>
         <PlusCircle className="h-4 w-4 mr-2" />
         {t("createAgent")}

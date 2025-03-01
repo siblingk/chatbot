@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { getAgents, updateAgent, deleteAgent } from "@/app/actions/agents";
 import { Agent, AgentConfig } from "@/types/agents";
@@ -10,9 +10,14 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { AgentsTab } from "@/components/settings/agents-tab";
 import { toast } from "sonner";
 import { redirect } from "next/navigation";
+import { Bot, RefreshCw, Shield, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 export default function AgentsPage() {
   const { userId } = useParams();
+  const router = useRouter();
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
   const t = useTranslations();
@@ -72,22 +77,58 @@ export default function AgentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="container mx-auto py-12 px-4">
+        <div className="flex items-center gap-2 mb-8">
+          <Bot className="h-6 w-6 text-primary" />
+          <h1 className="text-3xl font-bold">{t("settings.agents")}</h1>
+        </div>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-4 border rounded-lg"
+              >
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 w-9 rounded-md" />
+                  <Skeleton className="h-9 w-9 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <p className="text-destructive mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-        >
-          {t("settings.retry")}
-        </button>
+      <div className="container mx-auto py-12 px-4">
+        <div className="flex items-center gap-2 mb-8">
+          <Bot className="h-6 w-6 text-primary" />
+          <h1 className="text-3xl font-bold">{t("settings.agents")}</h1>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 border border-destructive/20 rounded-lg">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h2 className="text-xl font-semibold mb-2">
+            {t("settings.errorTitle")}
+          </h2>
+          <p className="text-muted-foreground mb-6 text-center max-w-md">
+            {error}
+          </p>
+          <Button onClick={() => window.location.reload()} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            {t("settings.retry")}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -97,15 +138,23 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">{t("settings.agents")}</h1>
-      <div className="bg-card rounded-lg shadow-sm p-6">
-        <AgentsTab
-          agentConfig={agentConfig}
-          onUpdateAgents={handleUpdateAgent}
-          onDeleteAgent={handleDeleteAgent}
-        />
+    <div className="container mx-auto py-12 px-4">
+      <div className="flex flex-row md:flex-row md:items-center gap-4 mb-8">
+        <Bot className="h-6 w-6 text-primary" />
+        <h1 className="text-3xl font-bold">{t("settings.agents")}</h1>
+        {isAdmin && (
+          <Badge variant="outline" className="ml-2 gap-1">
+            <Shield className="h-3 w-3" />
+            {t("settings.adminOnly")}
+          </Badge>
+        )}
       </div>
+
+      <AgentsTab
+        agentConfig={agentConfig}
+        onUpdateAgents={handleUpdateAgent}
+        onDeleteAgent={handleDeleteAgent}
+      />
     </div>
   );
 }

@@ -14,4 +14,5 @@ export interface WebhookRequest {
   sessionId: string;
   action: string;
   chatInput: string;
+  prompt?: Record<string, unknown>; // Información del agente para el chat de previsualización
 }

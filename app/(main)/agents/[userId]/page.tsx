@@ -3,17 +3,40 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getAgents, updateAgent, deleteAgent } from "@/app/actions/agents";
-import { Agent, AgentConfig } from "@/types/agents";
+import { getAgents, deleteAgent } from "@/app/actions/agents";
+import { Agent } from "@/types/agents";
 import { useAuth } from "@/contexts/auth-context";
 import { useUserRole } from "@/hooks/useUserRole";
-import { AgentsTab } from "@/components/settings/agents-tab";
 import { toast } from "sonner";
 import { redirect } from "next/navigation";
-import { Bot, RefreshCw, Shield, AlertCircle } from "lucide-react";
+import {
+  Bot,
+  RefreshCw,
+  Shield,
+  AlertCircle,
+  PlusCircle,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function AgentsPage() {
   const { userId } = useParams();
@@ -24,6 +47,8 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     // Verificar si el usuario es administrador o si está accediendo a su propia página
@@ -49,25 +74,22 @@ export default function AgentsPage() {
     fetchAgents();
   }, [userId, user, isAdmin, t]);
 
-  const handleUpdateAgent = async (agent: Agent): Promise<void> => {
+  const handleDeleteAgent = async () => {
     try {
-      await updateAgent(agent);
+      if (!currentAgent?.id) {
+        toast.error(t("settings.errorDeletingAgent"));
+        return;
+      }
+
+      await deleteAgent(currentAgent.id);
+      setIsDeleteDialogOpen(false);
+      setCurrentAgent(null);
+
       // Actualizar la lista de agentes
       setAgents((prevAgents) =>
-        prevAgents.map((a) => (a.id === agent.id ? agent : a))
+        prevAgents.filter((a) => a.id !== currentAgent.id)
       );
-      toast.success(t("settings.agentUpdated"));
-    } catch (error) {
-      console.error("Error updating agent:", error);
-      toast.error(t("settings.errorUpdatingAgent"));
-    }
-  };
 
-  const handleDeleteAgent = async (agentId: string): Promise<void> => {
-    try {
-      await deleteAgent(agentId);
-      // Eliminar el agente de la lista
-      setAgents((prevAgents) => prevAgents.filter((a) => a.id !== agentId));
       toast.success(t("settings.agentDeleted"));
     } catch (error) {
       console.error("Error deleting agent:", error);
@@ -133,10 +155,6 @@ export default function AgentsPage() {
     );
   }
 
-  const agentConfig: AgentConfig = {
-    agents: agents,
-  };
-
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="flex flex-row md:flex-row md:items-center gap-4 mb-8">
@@ -150,11 +168,113 @@ export default function AgentsPage() {
         )}
       </div>
 
-      <AgentsTab
-        agentConfig={agentConfig}
-        onUpdateAgents={handleUpdateAgent}
-        onDeleteAgent={handleDeleteAgent}
-      />
+      <div className="flex flex-col gap-4">
+        <Button
+          className="self-end"
+          onClick={() => router.push(`/agents/create`)}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />
+          {t("settings.createAgent")}
+        </Button>
+
+        {agents && agents.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("settings.name")}</TableHead>
+                <TableHead>{t("settings.model")}</TableHead>
+                <TableHead>{t("settings.visibility")}</TableHead>
+                <TableHead className="text-right">
+                  {t("settings.actions")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {agents.map((agent) => (
+                <TableRow key={agent.id}>
+                  <TableCell className="font-medium">{agent.name}</TableCell>
+                  <TableCell>{agent.model}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      {agent.visibility === "private" ? (
+                        <div key="private" className="flex items-center">
+                          {t("settings.private")}
+                        </div>
+                      ) : (
+                        <div key="public" className="flex items-center">
+                          {t("settings.public")}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          router.push(`/agents/${userId}/edit/${agent.id}`)
+                        }
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">{t("settings.edit")}</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setCurrentAgent(agent);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">{t("settings.delete")}</span>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <div className="text-center py-8 border rounded-md bg-muted/20">
+            <p className="text-muted-foreground">{t("settings.noAgents")}</p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => router.push(`/agents/create`)}
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              {t("settings.createAgent")}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Diálogo para confirmar eliminación */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("settings.deleteAgent")}</DialogTitle>
+            <DialogDescription>
+              {t("settings.deleteAgentConfirmation", {
+                name: currentAgent?.name || "",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              {t("settings.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteAgent}>
+              {t("settings.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

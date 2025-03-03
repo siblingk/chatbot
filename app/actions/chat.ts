@@ -58,7 +58,11 @@ export async function clearMessages(): Promise<void> {
   revalidatePath("/");
 }
 
-export async function sendMessage(sessionId: string, message: string) {
+export async function sendMessage(
+  sessionId: string,
+  message: string,
+  prompt?: Record<string, unknown>
+) {
   const WEBHOOK_URL = process.env.WEBHOOK_URL;
   if (!WEBHOOK_URL) {
     throw new Error("WEBHOOK_URL no está definida en las variables de entorno");
@@ -70,6 +74,10 @@ export async function sendMessage(sessionId: string, message: string) {
       action: "sendMessage",
       chatInput: message,
     };
+
+    if (prompt) {
+      webhookRequest.prompt = prompt;
+    }
 
     const response = await fetch(WEBHOOK_URL, {
       method: "POST",

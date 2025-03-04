@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 export async function getUserRole(): Promise<{
   role: AppRole | null;
   isAdmin: boolean;
+  isShop: boolean;
 }> {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
@@ -19,7 +20,7 @@ export async function getUserRole(): Promise<{
 
     if (!session?.user?.id) {
       console.log("No session or user ID found");
-      return { role: null, isAdmin: false };
+      return { role: null, isAdmin: false, isShop: false };
     }
 
     const { data: userData, error } = await supabase
@@ -30,16 +31,17 @@ export async function getUserRole(): Promise<{
 
     if (error) {
       console.error("Error fetching user role:", error);
-      return { role: null, isAdmin: false };
+      return { role: null, isAdmin: false, isShop: false };
     }
 
     return {
       role: userData?.role || null,
       isAdmin: userData?.role === "admin",
+      isShop: userData?.role === "shop",
     };
   } catch (error) {
     console.error("Error in getUserRole:", error);
-    return { role: null, isAdmin: false };
+    return { role: null, isAdmin: false, isShop: false };
   }
 }
 

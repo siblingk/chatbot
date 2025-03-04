@@ -1,8 +1,13 @@
 export interface Message {
   id: string;
+  session_id?: string;
+  input?: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
+  user_id?: string;
+  output?: string;
+  title?: string;
 }
 
 export interface ChatResponse {

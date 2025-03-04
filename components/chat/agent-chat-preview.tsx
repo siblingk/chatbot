@@ -232,7 +232,7 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
   };
 
   return (
-    <div className="border rounded-lg h-full flex flex-col">
+    <div className="rounded-lg h-full flex flex-col">
       <div className="bg-muted p-4 border-b flex justify-between items-center">
         <h3 className="font-medium">{tSettings("chatPreview")}</h3>
         <Button

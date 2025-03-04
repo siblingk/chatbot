@@ -49,14 +49,19 @@ export async function updateAgent(agent: Partial<Agent>) {
     system_instructions: agent.system_instructions,
     auto_assign_leads: agent.auto_assign_leads,
     auto_respond: agent.auto_respond,
-    user_id: user.id,
+    user_id: agent.user_id || user.id,
+    created_at: agent.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
   // Si estamos actualizando un agente existente (tiene ID)
   if (agent.id) {
     const { error } = await supabase
       .from("agents")
-      .update(agentData)
+      .update({
+        ...agentData,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", agent.id);
 
     if (error) {
@@ -66,7 +71,10 @@ export async function updateAgent(agent: Partial<Agent>) {
   }
   // Si estamos creando un nuevo agente (no tiene ID)
   else {
-    const { error } = await supabase.from("agents").insert(agentData);
+    // Eliminar el id undefined para que Supabase genere uno automáticamente
+    const { id, ...newAgentData } = agentData; // eslint-disable-line @typescript-eslint/no-unused-vars
+
+    const { error } = await supabase.from("agents").insert(newAgentData);
 
     if (error) {
       console.error("Error creating agent:", error);

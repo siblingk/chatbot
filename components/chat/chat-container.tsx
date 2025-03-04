@@ -1,31 +1,34 @@
 "use client";
 
-import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
 import { Message } from "@/types/chat";
+import { Bot, User } from "lucide-react";
 
 import {
   sendMessage,
-  getOrCreateSessionId,
   updateMessages,
+  createNewSessionId,
 } from "@/app/actions/chat";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useChat } from "@/contexts/chat-context";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { generateUUID } from "@/utils/uuid";
 
 interface ChatContainerProps {
+  // Mantenemos la prop por compatibilidad, aunque no la usemos directamente
   workshopId?: string;
 }
 
-export default function ChatContainer({ workshopId }: ChatContainerProps) {
+export default function ChatContainer({}: ChatContainerProps) {
   const t = useTranslations("chat");
   const { messages, setMessages } = useChat();
   const [isTyping, setIsTyping] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Extraer todos los parámetros de URL
   const urlParams: Record<string, unknown> = {};
@@ -63,17 +66,33 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
     }
   });
 
+  // Función para desplazarse al final del chat
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  };
+
+  // Desplazarse al final cuando cambian los mensajes o el estado de carga
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
   const handleSubmit = async (formData: FormData) => {
     const messageText = formData.get("message");
     if (!messageText || typeof messageText !== "string" || !messageText.trim())
       return;
 
-    const sessionId = await getOrCreateSessionId();
+    // Siempre crear un nuevo session_id para un nuevo chat
+    const sessionId = await createNewSessionId();
+
     const newMessage: Message = {
       id: generateUUID(),
       text: messageText,
       isUser: true,
       timestamp: new Date(),
+      session_id: sessionId,
+      input: messageText,
     };
 
     const updatedMessages = [...messages, newMessage];
@@ -96,11 +115,16 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
           text: response.message,
           isUser: false,
           timestamp: new Date(),
+          session_id: sessionId,
+          input: "",
         };
 
         const messagesWithBot = [...updatedMessages, botMessage];
         await updateMessages(messagesWithBot);
         setMessages(messagesWithBot);
+
+        // Redirigir a la página de chat con el ID de sesión después del primer mensaje
+        router.push(`/chat/${sessionId}`);
       }
     } finally {
       setIsTyping(false);
@@ -117,12 +141,66 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-10rem)] overflow-hidden">
-        <MessageList
-          messages={messages}
-          isLoading={isTyping}
-          workshopId={workshopId}
-        />
+      <div
+        className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-10rem)] overflow-y-auto p-4"
+        ref={scrollRef}
+      >
+        <div className="container max-w-3xl mx-auto space-y-4 pb-20">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${
+                message.isUser ? "justify-end" : "justify-start"
+              } items-end gap-2`}
+            >
+              {!message.isUser && (
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-4 w-4 text-primary" />
+                </div>
+              )}
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                  message.isUser
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                }`}
+              >
+                <p className="whitespace-pre-wrap break-words">
+                  {message.text}
+                </p>
+              </div>
+              {message.isUser && (
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <User className="h-4 w-4 text-primary-foreground" />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="flex justify-start items-end gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div className="max-w-[80%] rounded-2xl px-4 py-2 bg-muted">
+                <div className="flex space-x-2">
+                  <div
+                    className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 shadow-xl">

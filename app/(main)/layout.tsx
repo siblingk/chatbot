@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 export const dynamic = "force-dynamic";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+
 import { AuthProvider } from "@/contexts/auth-context";
 import { LanguageProvider } from "@/contexts/language-context";
 import { Toaster } from "sonner";
@@ -17,6 +17,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "@/app/globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { AppSidebar } from "@/components/app-sidebar/app-sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

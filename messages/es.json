@@ -13,7 +13,11 @@
     "settings": "Configuración",
     "login": "Iniciar Sesión",
     "reload": "Recargar página",
-    "verifyEmail": "Por favor, verifica tu correo electrónico para acceder a todas las funcionalidades."
+    "verifyEmail": "Por favor, verifica tu correo electrónico para acceder a todas las funcionalidades.",
+    "chatHistory": "Historial de chats",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "noChats": "No hay chats"
   },
   "auth": {
     "signIn": "Iniciar Sesión",
@@ -58,6 +62,10 @@
     "security": "Seguridad",
     "appearance": "Apariencia",
     "language": "Idioma",
+    "theme": "Tema",
+    "darkMode": "Modo Oscuro",
+    "lightMode": "Modo Claro",
+    "systemDefault": "Predeterminado del Sistema",
     "connected_apps": "Aplicaciones Conectadas",
     "shop_members": "Miembros de la Tienda",
     "agents": "Agentes",
@@ -129,7 +137,28 @@
     "simulateConversation": "Simular Conversación",
     "notAuthenticated": "No estás autenticado",
     "agentNotFound": "Agente no encontrado",
-    "actions": "Acciones"
+    "actions": "Acciones",
+    "saveChanges": "Guardar Cambios",
+    "goBack": "Regresar",
+    "errorLoading": "Error al cargar datos",
+    "errorUpdatingAgent": "Error al actualizar el agente",
+    "errorDeletingAgent": "Error al eliminar el agente",
+    "errorCreatingAgent": "Error al crear el agente",
+    "agentUpdated": "Agente actualizado exitosamente",
+    "agentDeleted": "Agente eliminado exitosamente",
+    "agentCreated": "Agente creado exitosamente",
+    "deleteAgent": "Eliminar Agente",
+    "deleteAgentConfirmation": "¿Estás seguro de que deseas eliminar el agente '{name}'? Esta acción no se puede deshacer.",
+    "creating": "Creando...",
+    "saving": "Guardando...",
+    "deleting": "Eliminando...",
+    "previewUrl": "URL de Vista Previa",
+    "previewUrlWithConfig": "URL con Configuración",
+    "previewUrlDescription": "Genera una URL para usar este agente en el chat",
+    "generateChatUrl": "Generar URL del Chat",
+    "copyUrl": "Copiar URL",
+    "openInNewTab": "Abrir en nueva pestaña",
+    "urlCopied": "¡URL copiada al portapapeles!"
   },
   "users": {
     "title": "Gestión de Usuarios",
@@ -255,7 +284,8 @@
     "quotationMessage": "Quiero una cotización",
     "errorMessage": "Lo sentimos, hubo un error al enviar tu mensaje. Por favor, inténtalo de nuevo.",
     "initialMessage": "¿Cómo puedo ayudarte hoy? Estoy aquí para responder tus preguntas y asistirte con lo que necesites.",
-    "resetConversation": "Reiniciar conversación"
+    "resetConversation": "Reiniciar conversación",
+    "newConversation": "Nueva conversación"
   },
   "shops": {
     "title": "Gestión de Tiendas",

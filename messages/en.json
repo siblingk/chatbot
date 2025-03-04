@@ -13,7 +13,11 @@
     "settings": "Settings",
     "login": "Login",
     "reload": "Reload page",
-    "verifyEmail": "Please verify your email to access all features."
+    "verifyEmail": "Please verify your email to access all features.",
+    "chatHistory": "Chat History",
+    "rename": "Rename",
+    "delete": "Delete",
+    "noChats": "No chats available"
   },
   "auth": {
     "signIn": "Sign In",
@@ -221,7 +225,21 @@
     "agentNotFound": "Agent not found",
     "systemInstructions": "System Instructions",
     "autoAssignLeads": "Auto-Assign Leads",
-    "aiAutoResponse": "AI Auto-Response"
+    "aiAutoResponse": "AI Auto-Response",
+    "theme": "Theme",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "systemDefault": "System Default",
+    "creating": "Creating...",
+    "saving": "Saving...",
+    "deleting": "Deleting...",
+    "previewUrl": "Preview URL",
+    "previewUrlWithConfig": "URL with Configuration",
+    "previewUrlDescription": "Generate a URL to use this agent in chat",
+    "generateChatUrl": "Generate Chat URL",
+    "copyUrl": "Copy URL",
+    "openInNewTab": "Open in new tab",
+    "urlCopied": "URL copied to clipboard!"
   },
   "users": {
     "title": "User Management",
@@ -342,12 +360,13 @@
   "chat": {
     "placeholder": "Type a message...",
     "send": "Send message",
-    "startQuotation": "Start quotation",
+    "startQuotation": "Quote now!",
     "discoverQuotation": "Discover your quotation now! ✨",
     "quotationMessage": "I want a quote",
     "errorMessage": "Sorry, there was an error sending your message. Please try again.",
     "initialMessage": "How can I help you today? I'm here to answer your questions and assist you with whatever you need.",
-    "resetConversation": "Reset conversation"
+    "resetConversation": "Reset conversation",
+    "newConversation": "New conversation"
   },
   "shops": {
     "title": "Shop Management",

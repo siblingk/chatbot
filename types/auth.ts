@@ -1,4 +1,4 @@
-export type AppRole = "admin" | "user";
+export type AppRole = "admin" | "user" | "shop";
 
 export type AppPermission =
   | "tasks.create"

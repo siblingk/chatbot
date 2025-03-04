@@ -10,12 +10,14 @@ interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
   workshopId?: string;
+  showWelcome?: boolean;
 }
 
 export function MessageList({
   messages,
   isLoading,
   workshopId,
+  showWelcome = true,
 }: MessageListProps) {
   const t = useTranslations("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -83,20 +85,22 @@ export function MessageList({
         ref={containerRef}
       >
         <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            onAnimationComplete={() => scrollToBottom()}
-          >
-            <WelcomeMessage
-              workshopId={workshopId}
-              onLoad={() => setWelcomeLoaded(true)}
-            />
-          </motion.div>
-          {showSecondMessage && (
+          {showWelcome && (
+            <motion.div
+              key="welcome"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              onAnimationComplete={() => scrollToBottom()}
+            >
+              <WelcomeMessage
+                workshopId={workshopId}
+                onLoad={() => setWelcomeLoaded(true)}
+              />
+            </motion.div>
+          )}
+          {showWelcome && showSecondMessage && (
             <motion.div
               key="initial-message"
               initial={{ opacity: 0, y: 20, scale: 0.95 }}

@@ -5,6 +5,7 @@ import { generateUUID } from "@/utils/uuid";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { getTranslations } from "next-intl/server";
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL as string;
 if (!WEBHOOK_URL) {
@@ -25,6 +26,16 @@ export async function getOrCreateSessionId(): Promise<string> {
   }
 
   return sessionId;
+}
+
+export async function createNewSessionId(): Promise<string> {
+  const cookieStore = await cookies();
+  const newSessionId = generateUUID();
+  cookieStore.set("chatSessionId", newSessionId, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7, // 1 semana
+  });
+  return newSessionId;
 }
 
 // Función para obtener el usuario actual
@@ -53,6 +64,55 @@ export async function updateMessages(messages: Message[]): Promise<void> {
     sameSite: "strict",
     maxAge: 60 * 60 * 24 * 7, // 7 días
   });
+
+  // Guardar mensajes en la base de datos
+  if (messages.length > 0) {
+    const supabase = await createClient(cookiesList);
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+
+    if (userId) {
+      // Obtener el último mensaje para usarlo como título si no hay uno definido
+      const lastUserMessage = [...messages].reverse().find((m) => m.isUser);
+      const sessionId = messages[0].session_id;
+      const t = await getTranslations("chat");
+
+      // Verificar si ya existe un registro para esta sesión
+      const { data: existingSession } = await supabase
+        .from("n8n_chat_histories")
+        .select()
+        .eq("session_id", sessionId)
+        .eq("user_id", userId)
+        .limit(1);
+
+      if (existingSession && existingSession.length > 0) {
+        // Actualizar el registro existente
+        await supabase
+          .from("n8n_chat_histories")
+          .update({
+            messages: messages,
+            updated_at: new Date().toISOString(),
+            title:
+              existingSession[0].title ||
+              lastUserMessage?.text ||
+              t("newConversation"),
+          })
+          .eq("session_id", sessionId)
+          .eq("user_id", userId);
+      } else {
+        // Crear un nuevo registro
+        await supabase.from("n8n_chat_histories").insert({
+          session_id: sessionId,
+          user_id: userId,
+          messages: messages,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          title: lastUserMessage?.text || t("newConversation"),
+        });
+      }
+    }
+  }
+
   revalidatePath("/");
 }
 
@@ -75,15 +135,38 @@ export async function sendMessage(
   prompt?: Record<string, unknown>,
   urlParams?: Record<string, unknown>
 ) {
-  const WEBHOOK_URL = process.env.WEBHOOK_URL;
-  if (!WEBHOOK_URL) {
-    throw new Error("WEBHOOK_URL no está definida en las variables de entorno");
+  // Obtener el usuario actual y su rol
+  const currentUser = await getCurrentUser();
+
+  // Determinar qué webhook URL usar según el rol del usuario
+  let webhookUrl = process.env.WEBHOOK_URL;
+
+  if (currentUser?.id) {
+    // Obtener el rol del usuario desde la base de datos
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    const { data: userData, error } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (!error && userData?.role) {
+      // Si el usuario tiene el rol 'shop', usar el webhook específico para tiendas
+      if (userData.role === "shop") {
+        webhookUrl = process.env.SHOP_WEBHOOK_URL;
+      }
+    }
+  }
+
+  if (!webhookUrl) {
+    throw new Error(
+      "URL del webhook no está definida en las variables de entorno"
+    );
   }
 
   try {
-    // Obtener el usuario actual
-    const currentUser = await getCurrentUser();
-
     const webhookRequest: WebhookRequest = {
       sessionId,
       action: "sendMessage",
@@ -118,7 +201,7 @@ export async function sendMessage(
       webhookRequest.prompt = finalPrompt;
     }
 
-    const response = await fetch(WEBHOOK_URL, {
+    const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -163,4 +246,55 @@ export async function sendMessage(
       message: errorMessage,
     };
   }
+}
+
+export async function getChatHistory(userId: string) {
+  const cookieStore = await cookies();
+  const supabase = await createClient(cookieStore);
+  const { data: history } = await supabase
+    .from("n8n_chat_histories")
+    .select()
+    .eq("user_id", userId);
+  return history;
+}
+
+// Función para eliminar una sesión de chat
+export async function deleteChatSession(userId: string, sessionId: string) {
+  const cookieStore = await cookies();
+  const supabase = await createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("n8n_chat_histories")
+    .delete()
+    .match({ user_id: userId, session_id: sessionId });
+
+  if (error) {
+    console.error("Error al eliminar la sesión de chat:", error);
+    throw new Error("No se pudo eliminar la sesión de chat");
+  }
+
+  return { success: true };
+}
+
+// Función para actualizar el título de una sesión de chat
+export async function updateChatTitle(
+  userId: string,
+  sessionId: string,
+  title: string
+) {
+  const cookieStore = await cookies();
+  const supabase = await createClient(cookieStore);
+
+  // Actualizar el título en la sesión de chat
+  const { error } = await supabase
+    .from("n8n_chat_histories")
+    .update({ title: title })
+    .match({ user_id: userId, session_id: sessionId });
+
+  if (error) {
+    console.error("Error al actualizar el título:", error);
+    throw new Error("No se pudo actualizar el título");
+  }
+
+  return { success: true };
 }

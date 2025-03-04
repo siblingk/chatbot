@@ -1,15 +1,9 @@
 import { ReactNode } from "react";
-import { AppSidebar } from "@/components/app-sidebar";
 
 interface AgentsLayoutProps {
   children: ReactNode;
 }
 
 export default function AgentsLayout({ children }: AgentsLayoutProps) {
-  return (
-    <div className="flex h-screen">
-      <AppSidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
-  );
+  return <main className="flex-1 overflow-y-auto">{children}</main>;
 }

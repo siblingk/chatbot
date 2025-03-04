@@ -39,16 +39,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Cargar mensajes personalizados
-      if (params.welcomeMessage) {
-        setWelcomeMessage(params.welcomeMessage);
+      if (params.welcome_message) {
+        setWelcomeMessage(params.welcome_message);
       }
 
-      if (params.preQuoteMessage) {
-        setPreQuoteMessage(params.preQuoteMessage);
+      if (params.pre_quote_message) {
+        setPreQuoteMessage(params.pre_quote_message);
       }
     }
     initialize();
-  }, [params.agentConfig, params.welcomeMessage, params.preQuoteMessage]);
+  }, [params.agentConfig, params.welcome_message, params.pre_quote_message]);
 
   const clearChat = async () => {
     await clearMessages();

@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Bot, User, RefreshCw } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 interface AgentChatPreviewProps {
   agent: Partial<Agent>;
@@ -22,6 +23,43 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+
+  // Extraer todos los parámetros de URL
+  const urlParams: Record<string, unknown> = {};
+
+  // Procesar todos los parámetros de la URL
+  searchParams.forEach((value, key) => {
+    // Si el parámetro es agentConfig, parsearlo como JSON
+    if (key === "agentConfig") {
+      try {
+        urlParams[key] = JSON.parse(value);
+      } catch {
+        console.error("Error al parsear agentConfig");
+        urlParams[key] = value;
+      }
+    }
+    // Convertir "true"/"false" a booleanos
+    else if (value === "true" || value === "false") {
+      urlParams[key] = value === "true";
+    }
+    // Intentar parsear JSON si el valor parece ser un objeto o array
+    else if (
+      (value.startsWith("{") && value.endsWith("}")) ||
+      (value.startsWith("[") && value.endsWith("]"))
+    ) {
+      try {
+        urlParams[key] = JSON.parse(value);
+      } catch {
+        // Si falla el parseo, usar el valor como string
+        urlParams[key] = value;
+      }
+    }
+    // Usar el valor como string para el resto de casos
+    else {
+      urlParams[key] = value;
+    }
+  });
 
   // Función para desplazarse al final de los mensajes
   const scrollToBottom = () => {
@@ -35,11 +73,15 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
 
   // Inicializar el chat con el mensaje de bienvenida del agente
   useEffect(() => {
-    if (agent && agent.welcome_message) {
+    // Priorizar el mensaje de bienvenida de los parámetros de URL si existe
+    const welcomeMessage =
+      (urlParams.welcome_message as string) || agent?.welcome_message;
+
+    if (welcomeMessage) {
       setMessages([
         {
           id: generateUUID(),
-          text: agent.welcome_message,
+          text: welcomeMessage,
           isUser: false,
           timestamp: new Date(),
         },
@@ -53,7 +95,7 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
     };
 
     initSession();
-  }, [agent]);
+  }, [agent, urlParams.welcome_message]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !sessionId) return;
@@ -75,8 +117,13 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
       // Convertir el agente a un objeto plano para enviarlo como prompt
       const agentPrompt = { ...agent };
 
-      // Enviar mensaje al webhook con la información del agente
-      const response = await sendMessage(sessionId, inputValue, agentPrompt);
+      // Enviar mensaje al webhook con la información del agente y los parámetros de URL
+      const response = await sendMessage(
+        sessionId,
+        inputValue,
+        agentPrompt,
+        Object.keys(urlParams).length > 0 ? urlParams : undefined
+      );
 
       if (response.success) {
         // Crear mensaje de respuesta del bot
@@ -117,11 +164,12 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
       // Convertir el agente a un objeto plano para enviarlo como prompt
       const agentPrompt = { ...agent };
 
-      // Enviar mensaje al webhook con la información del agente
+      // Enviar mensaje al webhook con la información del agente y los parámetros de URL
       const response = await sendMessage(
         sessionId,
         "Hola, necesito un presupuesto para reparar mi coche",
-        agentPrompt
+        agentPrompt,
+        Object.keys(urlParams).length > 0 ? urlParams : undefined
       );
 
       if (response.success) {
@@ -139,10 +187,11 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
     } catch (error) {
       console.error("Error al simular conversación:", error);
 
-      // Si hay un error, mostrar una respuesta predefinida basada en el agente
+      // Si hay un error, mostrar una respuesta predefinida basada en el agente o los parámetros de URL
       const fallbackMessage: Message = {
         id: generateUUID(),
         text:
+          (urlParams.pre_quote_message as string) ||
           agent.pre_quote_message ||
           "Tu estimación de reparación está entre $x, $y",
         isUser: false,
@@ -157,11 +206,15 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
 
   // Función para reiniciar la conversación
   const resetConversation = () => {
-    if (agent && agent.welcome_message) {
+    // Priorizar el mensaje de bienvenida de los parámetros de URL si existe
+    const welcomeMessage =
+      (urlParams.welcome_message as string) || agent?.welcome_message;
+
+    if (welcomeMessage) {
       setMessages([
         {
           id: generateUUID(),
-          text: agent.welcome_message,
+          text: welcomeMessage,
           isUser: false,
           timestamp: new Date(),
         },

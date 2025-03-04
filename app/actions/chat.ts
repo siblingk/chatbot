@@ -4,6 +4,7 @@ import { WebhookRequest, Message } from "@/types/chat";
 import { generateUUID } from "@/utils/uuid";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL as string;
 if (!WEBHOOK_URL) {
@@ -24,6 +25,16 @@ export async function getOrCreateSessionId(): Promise<string> {
   }
 
   return sessionId;
+}
+
+// Función para obtener el usuario actual
+export async function getCurrentUser() {
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user || null;
 }
 
 export async function getStoredMessages(): Promise<Message[]> {
@@ -61,7 +72,8 @@ export async function clearMessages(): Promise<void> {
 export async function sendMessage(
   sessionId: string,
   message: string,
-  prompt?: Record<string, unknown>
+  prompt?: Record<string, unknown>,
+  urlParams?: Record<string, unknown>
 ) {
   const WEBHOOK_URL = process.env.WEBHOOK_URL;
   if (!WEBHOOK_URL) {
@@ -69,14 +81,41 @@ export async function sendMessage(
   }
 
   try {
+    // Obtener el usuario actual
+    const currentUser = await getCurrentUser();
+
     const webhookRequest: WebhookRequest = {
       sessionId,
       action: "sendMessage",
       chatInput: message,
     };
 
+    // Añadir el ID del usuario si está autenticado
+    if (currentUser?.id) {
+      webhookRequest.userId = currentUser.id;
+    }
+
+    // Crear o actualizar el objeto prompt con los parámetros de URL
+    let finalPrompt: Record<string, unknown> = {};
+
+    // Si ya existe un prompt, usarlo como base
     if (prompt) {
-      webhookRequest.prompt = prompt;
+      finalPrompt = { ...prompt };
+    }
+
+    // Añadir todos los parámetros de URL al objeto prompt
+    if (urlParams) {
+      Object.entries(urlParams).forEach(([key, value]) => {
+        // No incluir agentConfig en el prompt si ya está el objeto completo
+        if (key !== "agentConfig" || !finalPrompt.hasOwnProperty("id")) {
+          finalPrompt[key] = value;
+        }
+      });
+    }
+
+    // Añadir el prompt final al webhook request
+    if (Object.keys(finalPrompt).length > 0) {
+      webhookRequest.prompt = finalPrompt;
     }
 
     const response = await fetch(WEBHOOK_URL, {

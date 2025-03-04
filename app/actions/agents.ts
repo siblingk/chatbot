@@ -36,6 +36,7 @@ export async function updateAgent(agent: Partial<Agent>) {
 
   // Asegurarnos de que los campos estén en snake_case
   const agentData = {
+    id: agent.id,
     name: agent.name,
     model: agent.model,
     visibility: agent.visibility,
@@ -48,14 +49,29 @@ export async function updateAgent(agent: Partial<Agent>) {
     system_instructions: agent.system_instructions,
     auto_assign_leads: agent.auto_assign_leads,
     auto_respond: agent.auto_respond,
-    user_id: user.id, // Usar el ID del usuario autenticado
+    user_id: user.id,
   };
 
-  const { error } = await supabase.from("agents").upsert(agentData);
+  // Si estamos actualizando un agente existente (tiene ID)
+  if (agent.id) {
+    const { error } = await supabase
+      .from("agents")
+      .update(agentData)
+      .eq("id", agent.id);
 
-  if (error) {
-    console.error("Error updating agent:", error);
-    throw error;
+    if (error) {
+      console.error("Error updating agent:", error);
+      throw error;
+    }
+  }
+  // Si estamos creando un nuevo agente (no tiene ID)
+  else {
+    const { error } = await supabase.from("agents").insert(agentData);
+
+    if (error) {
+      console.error("Error creating agent:", error);
+      throw error;
+    }
   }
 }
 

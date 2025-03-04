@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 export const dynamic = "force-dynamic";
 
 import { AuthProvider } from "@/contexts/auth-context";
-import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "sonner";
 
 import "@/app/globals.css";
@@ -26,7 +25,7 @@ export const metadata: Metadata = {
   description: "Siblingk - Gestión de Talleres",
 };
 
-export default async function RootLayout({
+export default async function AuthLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -34,25 +33,14 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthProvider>
-              <main className="flex-1 mx-auto container">{children}</main>
-            </AuthProvider>
-          </ThemeProvider>
-        </NextIntlClientProvider>
+    <div className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <AuthProvider>
+          <main className="flex-1 mx-auto container">{children}</main>
+        </AuthProvider>
+      </NextIntlClientProvider>
 
-        <Toaster richColors position="top-right" />
-      </body>
-    </html>
+      <Toaster richColors position="top-right" />
+    </div>
   );
 }

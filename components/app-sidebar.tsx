@@ -106,7 +106,6 @@ export function AppSidebar() {
                       <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
                     <span>{user.email}</span>
-                    <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent

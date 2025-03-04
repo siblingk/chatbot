@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { useChat } from "@/contexts/chat-context";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { generateUUID } from "@/utils/uuid";
@@ -24,6 +25,43 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
   const t = useTranslations("chat");
   const { messages, setMessages } = useChat();
   const [isTyping, setIsTyping] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Extraer todos los parámetros de URL
+  const urlParams: Record<string, unknown> = {};
+
+  // Procesar todos los parámetros de la URL
+  searchParams.forEach((value, key) => {
+    // Si el parámetro es agentConfig, parsearlo como JSON
+    if (key === "agentConfig") {
+      try {
+        urlParams[key] = JSON.parse(value);
+      } catch {
+        console.error("Error al parsear agentConfig");
+        urlParams[key] = value;
+      }
+    }
+    // Convertir "true"/"false" a booleanos
+    else if (value === "true" || value === "false") {
+      urlParams[key] = value === "true";
+    }
+    // Intentar parsear JSON si el valor parece ser un objeto o array
+    else if (
+      (value.startsWith("{") && value.endsWith("}")) ||
+      (value.startsWith("[") && value.endsWith("]"))
+    ) {
+      try {
+        urlParams[key] = JSON.parse(value);
+      } catch {
+        // Si falla el parseo, usar el valor como string
+        urlParams[key] = value;
+      }
+    }
+    // Usar el valor como string para el resto de casos
+    else {
+      urlParams[key] = value;
+    }
+  });
 
   const handleSubmit = async (formData: FormData) => {
     const messageText = formData.get("message");
@@ -44,7 +82,13 @@ export default function ChatContainer({ workshopId }: ChatContainerProps) {
     setIsTyping(true);
 
     try {
-      const response = await sendMessage(sessionId, messageText);
+      // Pasar todos los parámetros de URL al enviar el mensaje
+      const response = await sendMessage(
+        sessionId,
+        messageText,
+        undefined,
+        Object.keys(urlParams).length > 0 ? urlParams : undefined
+      );
 
       if (response.success) {
         const botMessage: Message = {

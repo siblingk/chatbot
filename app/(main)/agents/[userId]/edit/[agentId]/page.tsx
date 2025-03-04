@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import AgentChatPreview from "@/components/chat/agent-chat-preview";
+import { PreviewUrlGenerator } from "@/components/settings/preview-url-generator";
 
 export default function EditAgentPage() {
   const params = useParams();
@@ -451,7 +452,10 @@ export default function EditAgentPage() {
           </div>
         </div>
         <div className="hidden lg:block h-[calc(100vh-200px)] sticky top-8">
-          {agent && <AgentChatPreview agent={agent} />}
+          <div className="space-y-4">
+            {agent && <AgentChatPreview agent={agent} />}
+            <PreviewUrlGenerator agentId={agent?.id} agentConfig={agent} />
+          </div>
         </div>
       </div>
 

@@ -1,17 +1,17 @@
-"use server";
 import { getChatHistory } from "@/app/actions/chat";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import ChatSessionContainer from "./chat-session-container";
+import { Metadata } from "next";
 
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     session_id: string;
-  };
+  }>;
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {
-  const { session_id } = params;
+  const { session_id } = await params;
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
@@ -44,3 +44,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
     />
   );
 }
+export const metadata: Metadata = {
+  title: "Chat",
+  description: "Conversación con el agente",
+};

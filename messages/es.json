@@ -277,19 +277,20 @@
     "loading": "Cargando..."
   },
   "chat": {
+    "title": "Chat",
+    "session": "Sesión {id}",
     "placeholder": "Escribe un mensaje...",
     "send": "Enviar mensaje",
-    "startQuotation": "Iniciar cotización",
-    "discoverQuotation": "¡Descubre tu cotización ahora! ✨",
-    "quotationMessage": "Quiero una cotización",
-    "errorMessage": "Lo sentimos, hubo un error al enviar tu mensaje. Por favor, inténtalo de nuevo.",
-    "initialMessage": "¿Cómo puedo ayudarte hoy? Estoy aquí para responder tus preguntas y asistirte con lo que necesites.",
-    "resetConversation": "Reiniciar conversación",
-    "newConversation": "Nueva conversación",
-    "sending": "Enviando mensaje...",
-    "processing": "Procesando...",
+    "processing": "Procesando mensaje...",
     "receiving": "Recibiendo respuesta...",
-    "error": "Error al procesar el mensaje"
+    "error": "Error al procesar el mensaje",
+    "retry": "Reintentar",
+    "newChat": "Nuevo chat",
+    "deleteChat": "Eliminar chat",
+    "confirmDelete": "¿Estás seguro de que deseas eliminar esta conversación?",
+    "noMessages": "No hay mensajes. Comienza la conversación.",
+    "sessionTitle": "Chat - Sesión {id}",
+    "sessionDescription": "Conversación en tiempo real con el agente - Sesión {id}"
   },
   "shops": {
     "title": "Gestión de Tiendas",

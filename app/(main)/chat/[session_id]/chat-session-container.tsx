@@ -249,7 +249,7 @@ export default function ChatSessionContainer({
       >
         <div className="container mx-auto max-w-3xl">
           <AnimatePresence initial={false}>
-            {messages.map((message, index) => (
+            {messages.map((message) => (
               <motion.div
                 key={message.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -259,7 +259,7 @@ export default function ChatSessionContainer({
                   ease: "easeOut",
                 }}
                 className={cn(
-                  "flex items-start justify-between gap-3 space-y-6",
+                  "flex items-start gap-3 mb-6",
                   message.isUser ? "justify-end" : "justify-start"
                 )}
               >
@@ -277,7 +277,7 @@ export default function ChatSessionContainer({
                     <Bot className="w-3.5 h-3.5 text-muted-foreground" />
                   )}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 max-w-[85%]">
                   <div
                     className={cn(
                       "px-4 py-2.5 rounded-2xl text-sm",

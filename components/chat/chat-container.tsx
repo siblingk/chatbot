@@ -138,6 +138,7 @@ export default function ChatContainer({}: ChatContainerProps) {
   };
 
   const hasUserMessages = messages.some((message) => message.isUser);
+  console.log(isTyping);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

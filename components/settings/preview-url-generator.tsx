@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, ExternalLink } from "lucide-react";
@@ -23,7 +22,6 @@ export function PreviewUrlGenerator({
   agentId,
   agentConfig,
 }: PreviewUrlGeneratorProps) {
-  const t = useTranslations();
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
 
@@ -35,41 +33,18 @@ export function PreviewUrlGenerator({
     const sessionId = `${timestamp}-${randomValue}`;
 
     // Apuntar a la página principal en lugar de a una página de preview separada
-    const baseUrl = `${window.location.origin}`;
+    const baseUrl = `${window.location.origin}/chat/${sessionId}`;
     const params = new URLSearchParams();
 
-    // Agregar el session_id como primer parámetro
-    params.set("session_id", sessionId);
-
-    // Usar los nombres de parámetros definidos en chatParams
+    // Solo usar el agentId como parámetro
     if (agentId) {
       params.set("agentId", agentId);
-    } else if (agentConfig) {
-      params.set("agentConfig", JSON.stringify(agentConfig));
+    } else if (agentConfig && agentConfig.id) {
+      // Si no hay agentId pero hay un id en el agentConfig, usarlo
+      params.set("agentId", String(agentConfig.id));
     }
 
-    // Agregar todos los parámetros disponibles en el agente
-    if (agentConfig) {
-      // Usar exactamente los mismos nombres que en la interfaz Agent
-      Object.entries(agentConfig).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          // Convertir valores booleanos a string
-          if (typeof value === "boolean") {
-            params.set(key, String(value));
-          }
-          // Convertir objetos a JSON
-          else if (typeof value === "object") {
-            params.set(key, JSON.stringify(value));
-          }
-          // Usar el valor directamente para strings y números
-          else {
-            params.set(key, String(value));
-          }
-        }
-      });
-    }
-
-    const url = `${baseUrl}?${params.toString()}`;
+    const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
     setPreviewUrl(url);
   };
 
@@ -83,8 +58,10 @@ export function PreviewUrlGenerator({
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle>{t("settings.previewUrlWithConfig")}</CardTitle>
-        <CardDescription>{t("settings.previewUrlDescription")}</CardDescription>
+        <CardTitle>URL con Configuración</CardTitle>
+        <CardDescription>
+          Genera una URL para usar este agente en el chat
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button
@@ -92,7 +69,7 @@ export function PreviewUrlGenerator({
           variant="outline"
           className="w-full"
         >
-          {t("settings.generateChatUrl")}
+          Generar URL del Chat
         </Button>
 
         {previewUrl && (
@@ -103,7 +80,7 @@ export function PreviewUrlGenerator({
                 variant="outline"
                 size="icon"
                 onClick={copyToClipboard}
-                title={t("settings.copyUrl")}
+                title="Copiar URL"
               >
                 <Copy className="h-4 w-4" />
               </Button>
@@ -111,7 +88,7 @@ export function PreviewUrlGenerator({
                 variant="outline"
                 size="icon"
                 asChild
-                title={t("settings.openInNewTab")}
+                title="Abrir en nueva pestaña"
               >
                 <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4" />
@@ -120,7 +97,7 @@ export function PreviewUrlGenerator({
             </div>
             {copied && (
               <p className="text-sm text-green-600">
-                {t("settings.urlCopied")}
+                ¡URL copiada al portapapeles!
               </p>
             )}
           </div>

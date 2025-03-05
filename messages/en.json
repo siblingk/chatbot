@@ -366,7 +366,11 @@
     "errorMessage": "Sorry, there was an error sending your message. Please try again.",
     "initialMessage": "How can I help you today? I'm here to answer your questions and assist you with whatever you need.",
     "resetConversation": "Reset conversation",
-    "newConversation": "New conversation"
+    "newConversation": "New conversation",
+    "sending": "Sending message...",
+    "processing": "Processing...",
+    "receiving": "Receiving response...",
+    "error": "Error processing message"
   },
   "shops": {
     "title": "Shop Management",

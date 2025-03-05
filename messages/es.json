@@ -285,7 +285,11 @@
     "errorMessage": "Lo sentimos, hubo un error al enviar tu mensaje. Por favor, inténtalo de nuevo.",
     "initialMessage": "¿Cómo puedo ayudarte hoy? Estoy aquí para responder tus preguntas y asistirte con lo que necesites.",
     "resetConversation": "Reiniciar conversación",
-    "newConversation": "Nueva conversación"
+    "newConversation": "Nueva conversación",
+    "sending": "Enviando mensaje...",
+    "processing": "Procesando...",
+    "receiving": "Recibiendo respuesta...",
+    "error": "Error al procesar el mensaje"
   },
   "shops": {
     "title": "Gestión de Tiendas",

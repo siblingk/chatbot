@@ -178,27 +178,9 @@ export async function sendMessage(
       webhookRequest.userId = currentUser.id;
     }
 
-    // Crear o actualizar el objeto prompt con los parámetros de URL
-    let finalPrompt: Record<string, unknown> = {};
-
-    // Si ya existe un prompt, usarlo como base
-    if (prompt) {
-      finalPrompt = { ...prompt };
-    }
-
-    // Añadir todos los parámetros de URL al objeto prompt
-    if (urlParams) {
-      Object.entries(urlParams).forEach(([key, value]) => {
-        // No incluir agentConfig en el prompt si ya está el objeto completo
-        if (key !== "agentConfig" || !finalPrompt.hasOwnProperty("id")) {
-          finalPrompt[key] = value;
-        }
-      });
-    }
-
-    // Añadir el prompt final al webhook request
-    if (Object.keys(finalPrompt).length > 0) {
-      webhookRequest.prompt = finalPrompt;
+    // Añadir el agentId directamente al webhook request si está en los parámetros de URL
+    if (urlParams && urlParams.agentId) {
+      webhookRequest.agentId = urlParams.agentId as string;
     }
 
     const response = await fetch(webhookUrl, {

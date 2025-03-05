@@ -20,5 +20,6 @@ export interface WebhookRequest {
   action: string;
   chatInput: string;
   userId?: string; // ID del usuario autenticado (opcional)
+  agentId?: string; // ID del agente (opcional)
   prompt?: Record<string, unknown>; // Información del agente y parámetros de URL
 }

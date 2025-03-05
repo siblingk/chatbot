@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Forward } from "lucide-react";
+import { Forward, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 
@@ -88,67 +88,82 @@ export function MessageInput({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="drop-shadow-xl"
+      transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <div className="container max-w-3xl mx-auto">
-        <motion.form
-          ref={formRef}
-          onSubmit={handleSubmit}
-          className="relative flex items-center"
-          layout
+      <motion.form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        className="relative mx-auto w-full max-w-3xl flex items-center"
+        animate={isFocused ? { scale: 1.01 } : { scale: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <motion.div
+          className="relative flex-1 group"
+          whileTap={{ scale: 0.98 }}
         >
-          <motion.div
-            className="relative flex-1 group"
-            animate={isFocused ? { scale: 1.01 } : { scale: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Input
-              ref={inputRef}
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder={t("placeholder")}
-              autoComplete="off"
-              className="h-14 pl-6 pr-14 rounded-2xl shadow-sm transition-all duration-200 border-muted-foreground/20 focus:bg-muted group-hover:bg-muted"
-              disabled={isSubmitting || disabled}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              autoFocus
-            />
-            <AnimatePresence mode="wait">
-              {isSubmitting ? (
+          <Input
+            ref={inputRef}
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={t("placeholder")}
+            autoComplete="off"
+            className="h-12 pl-5 pr-12 rounded-full shadow-sm transition-all duration-200 border-muted-foreground/10 focus:border-primary/30 bg-background focus:bg-background"
+            disabled={isSubmitting || disabled}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            autoFocus
+          />
+          <AnimatePresence mode="wait">
+            {isSubmitting ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, scale: 0.8, rotate: 0 }}
+                animate={{ opacity: 1, scale: 1, rotate: 360 }}
+                exit={{ opacity: 0, scale: 0.8, rotate: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="absolute right-3 top-3"
+              >
+                <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </motion.div>
+            ) : message.trim() ? (
+              <motion.div
+                key="button"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-3 top-2.5"
+              >
                 <motion.div
-                  key="loading"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute right-3 top-4"
-                >
-                  <div className="h-7 w-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </motion.div>
-              ) : message.trim() ? (
-                <motion.div
-                  key="button"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute right-3 top-3"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                 >
                   <Button
                     type="submit"
                     size="icon"
-                    className="h-8 w-8 rounded-full"
+                    className="h-7 w-7 rounded-full bg-primary hover:bg-primary/90"
                     disabled={isSubmitting || disabled}
                     aria-label={t("send")}
                   >
-                    <Forward className="h-4 w-4" />
+                    <Forward className="h-3.5 w-3.5 text-primary-foreground" />
                   </Button>
                 </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </motion.div>
-        </motion.form>
-      </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="sparkle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                className="absolute right-3.5 top-3.5"
+              >
+                <Sparkles className="h-5 w-5 text-primary/40" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </motion.form>
     </motion.div>
   );
 }

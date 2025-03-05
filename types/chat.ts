@@ -22,4 +22,7 @@ export interface WebhookRequest {
   userId?: string; // ID del usuario autenticado (opcional)
   agentId?: string; // ID del agente (opcional)
   prompt?: Record<string, unknown>; // Información del agente y parámetros de URL
+  // Ya no enviamos estos campos en el cuerpo del webhook
+  // userRole?: string; // Rol del usuario (opcional)
+  // isAdmin?: boolean; // Indica si el usuario es administrador (opcional)
 }

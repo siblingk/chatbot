@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Car, MoreVertical, Pencil, Trash2, Check, X } from "lucide-react";
+import {
+  Car,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  Plus,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   SidebarMenu,
@@ -152,11 +160,17 @@ export function SidebarChatList({
           );
         })
       ) : (
-        <SidebarMenuItem className="opacity-70 pointer-events-none">
-          <span className="text-sm text-muted-foreground">
+        <div className="px-3 py-2">
+          <div className="text-sm text-muted-foreground mb-2">
             {t("sidebar.noChats")}
-          </span>
-        </SidebarMenuItem>
+          </div>
+          <Button variant="outline" size="sm" className="w-full" asChild>
+            <Link href="/">
+              <Plus className="h-4 w-4 mr-2" />
+              {t("chat.newChat")}
+            </Link>
+          </Button>
+        </div>
       )}
     </SidebarMenu>
   );

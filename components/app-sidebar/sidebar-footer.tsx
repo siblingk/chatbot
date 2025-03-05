@@ -108,7 +108,7 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/auth/signin" className="flex items-center gap-4">
-                    <LogIn className="mr-2 h-4 w-4" />
+                    <LogIn className="h-4 w-4" />
                     {t("auth.signIn")}
                   </Link>
                 </DropdownMenuItem>

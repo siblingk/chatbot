@@ -74,7 +74,15 @@ export default function ChatSessionContainer({
       return clientMessages;
     });
 
+    // Si no hay mensajes formateados y tampoco hay mensajes en el estado actual,
+    // podemos agregar un mensaje de bienvenida
+    if (formattedMessages.length === 0 && messages.length === 0) {
+      // No agregamos automáticamente un mensaje de bienvenida, dejamos que el usuario inicie la conversación
+      // El componente mostrará la interfaz vacía lista para que el usuario escriba
+    }
+
     setMessages(formattedMessages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages, sessionId]);
 
   // Limpiar timeouts al desmontar el componente
@@ -248,6 +256,21 @@ export default function ChatSessionContainer({
         className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
       >
         <div className="container mx-auto max-w-3xl">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+              <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">
+                {t("welcomeTitle") || "¡Bienvenido a tu nueva conversación!"}
+              </h3>
+              <p className="text-muted-foreground max-w-md mb-6">
+                {t("welcomeMessage") ||
+                  "Esta es una nueva sesión de chat. Escribe tu primer mensaje para comenzar."}
+              </p>
+            </div>
+          )}
+
           <AnimatePresence initial={false}>
             {messages.map((message) => (
               <motion.div

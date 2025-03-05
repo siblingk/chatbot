@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@hookform/resolvers": "^4.1.2",
+    "@hookform/resolvers": "^4.1.3",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -45,10 +45,10 @@
     "cmdk": "1.0.4",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.5.2",
-    "framer-motion": "^12.4.7",
+    "framer-motion": "^12.4.10",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.475.0",
-    "next": "15.2.0",
+    "next": "15.2.1",
     "next-intl": "^3.26.5",
     "next-themes": "^0.4.4",
     "nuqs": "^2.4.0",
@@ -66,14 +66,14 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.0",
-    "@types/node": "^22.13.5",
+    "@types/node": "^22.13.9",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "eslint": "^9.21.0",
-    "eslint-config-next": "15.2.0",
+    "eslint-config-next": "15.2.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.3"
+    "typescript": "^5.8.2"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
 }

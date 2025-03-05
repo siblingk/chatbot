@@ -8,17 +8,16 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     session_id: string;
-  };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  }>;
 }
 
 export async function generateMetadata(
   { params }: ChatPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { session_id } = params;
+  const { session_id } = await params;
   const t = await getTranslations("chat");
 
   // Puedes obtener metadatos del padre si es necesario
@@ -43,7 +42,7 @@ export async function generateMetadata(
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {
-  const { session_id } = params;
+  const { session_id } = await params;
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
@@ -80,20 +79,17 @@ export default async function ChatPage({ params }: ChatPageProps) {
       (message) => message.session_id === session_id
     );
 
-    // Verificar si el chat pertenece al usuario actual
-    if (!sessionMessages || sessionMessages.length === 0) {
-      // Si no hay mensajes para esta sesión o no pertenece al usuario, redirigir
-      console.log("No hay mensajes para esta sesión o no pertenece al usuario");
-      redirect("/");
-    }
+    // Incluso si no hay mensajes, permitimos acceder a la sesión
+    // Esto permite crear nuevos chats con un ID de sesión específico
 
-    // Serializar los mensajes para pasarlos al cliente
-    const serializedMessages = sessionMessages.map((message) => ({
-      ...message,
-      timestamp: message.timestamp
-        ? message.timestamp.toISOString()
-        : new Date().toISOString(),
-    }));
+    // Serializar los mensajes para pasarlos al cliente (o un array vacío si no hay mensajes)
+    const serializedMessages =
+      sessionMessages?.map((message) => ({
+        ...message,
+        timestamp: message.timestamp
+          ? message.timestamp.toISOString()
+          : new Date().toISOString(),
+      })) || [];
 
     return (
       <ChatSessionContainer

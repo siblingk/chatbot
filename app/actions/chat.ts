@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getTranslations } from "next-intl/server";
+import { getUserRole } from "./auth";
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL as string;
 if (!WEBHOOK_URL) {
@@ -137,29 +138,66 @@ export async function sendMessage(
   prompt?: Record<string, unknown>,
   urlParams?: Record<string, unknown>
 ) {
-  // Obtener el usuario actual y su rol
+  // Obtener el usuario actual
   const currentUser = await getCurrentUser();
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
 
-  // Determinar qué webhook URL usar según el rol del usuario
-  let webhookUrl = process.env.WEBHOOK_URL;
+  // Variables para el webhook
+  let isAdmin = false;
+  let isShop = false;
+  let userRole = "user"; // Por defecto, asumimos que es un usuario normal
 
-  if (currentUser?.id) {
-    // Obtener el rol del usuario desde la base de datos
-    const cookieStore = cookies();
-    const supabase = await createClient(cookieStore);
+  console.log("sendMessage - Usuario actual:", currentUser?.id);
+  console.log("sendMessage - URL Params:", JSON.stringify(urlParams));
+  console.log("sendMessage - Prompt:", JSON.stringify(prompt));
 
-    const { data: userData, error } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", currentUser.id)
-      .single();
+  // Determinar el rol del usuario usando la misma lógica que useUserRole
+  if (currentUser) {
+    try {
+      // Usar getUserRole para obtener el rol del usuario
+      const userRoleInfo = await getUserRole();
 
-    if (!error && userData?.role) {
-      // Si el usuario tiene el rol 'shop', usar el webhook específico para tiendas
-      if (userData.role === "shop") {
-        webhookUrl = process.env.SHOP_WEBHOOK_URL;
-      }
+      console.log(
+        "sendMessage - Información de rol obtenida:",
+        JSON.stringify(userRoleInfo)
+      );
+
+      userRole = userRoleInfo.role || "user";
+      isAdmin = userRoleInfo.isAdmin;
+      isShop = userRoleInfo.isShop;
+
+      console.log("sendMessage - Rol del usuario:", userRole);
+      console.log("sendMessage - Es admin:", isAdmin);
+      console.log("sendMessage - Es shop:", isShop);
+    } catch (error) {
+      console.error("Error al obtener el rol del usuario:", error);
     }
+  } else {
+    console.log("sendMessage - No hay usuario autenticado");
+  }
+
+  // PASO 1: Determinar el webhook URL basado ÚNICAMENTE en el rol del usuario
+  // Esta es la parte más importante y no debe ser modificada después
+  let webhookUrl;
+  if (isShop) {
+    webhookUrl = process.env.SHOP_WEBHOOK_URL;
+    console.log(
+      "sendMessage - Usuario es shop, usando SHOP_WEBHOOK_URL:",
+      webhookUrl
+    );
+  } else if (isAdmin) {
+    webhookUrl = process.env.ADMIN_WEBHOOK_URL || process.env.WEBHOOK_URL;
+    console.log(
+      "sendMessage - Usuario es admin, usando ADMIN_WEBHOOK_URL o WEBHOOK_URL:",
+      webhookUrl
+    );
+  } else {
+    webhookUrl = process.env.WEBHOOK_URL;
+    console.log(
+      "sendMessage - Usuario es user, usando WEBHOOK_URL:",
+      webhookUrl
+    );
   }
 
   if (!webhookUrl) {
@@ -169,6 +207,7 @@ export async function sendMessage(
   }
 
   try {
+    // PASO 2: Crear el objeto de solicitud webhook
     const webhookRequest: WebhookRequest = {
       sessionId,
       action: "sendMessage",
@@ -180,10 +219,187 @@ export async function sendMessage(
       webhookRequest.userId = currentUser.id;
     }
 
-    // Añadir el agentId directamente al webhook request si está en los parámetros de URL
-    if (urlParams && urlParams.agentId) {
-      webhookRequest.agentId = urlParams.agentId as string;
+    // Añadir el prompt si se proporciona
+    if (prompt) {
+      webhookRequest.prompt = prompt;
     }
+
+    // PASO 3: Determinar el agentId
+    let agentId: string | undefined;
+
+    // Prioridad 1: Si hay un agentId en los parámetros de URL, usarlo
+    if (urlParams && urlParams.agentId) {
+      agentId = urlParams.agentId as string;
+      console.log("sendMessage - Usando agentId de parámetros URL:", agentId);
+
+      // Verificar que el agente sea compatible con el rol del usuario
+      if (agentId) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("*")
+          .eq("id", agentId)
+          .single();
+
+        if (agent) {
+          console.log(
+            "sendMessage - Información del agente:",
+            JSON.stringify(agent)
+          );
+
+          // Verificar compatibilidad de target_role con el rol del usuario
+          if (
+            !isAdmin &&
+            agent.target_role !== "both" &&
+            agent.target_role !== userRole
+          ) {
+            console.log(
+              `sendMessage - Agente incompatible con el rol del usuario. Agent target_role: ${agent.target_role}, User role: ${userRole}`
+            );
+            const t = await getTranslations("chat");
+            return {
+              success: false,
+              message:
+                t("agentNotAvailableForRole") ||
+                "Este agente no está disponible para tu rol.",
+            };
+          }
+        }
+      }
+    }
+    // Prioridad 2: Si hay un agentId en el prompt (caso del AgentChatPreview), usarlo
+    else if (prompt && prompt.id) {
+      agentId = prompt.id as string;
+      console.log("sendMessage - Usando agentId del prompt:", agentId);
+
+      // Verificar que el agente sea compatible con el rol del usuario
+      if (agentId) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("*")
+          .eq("id", agentId)
+          .single();
+
+        if (agent) {
+          console.log(
+            "sendMessage - Información del agente (prompt):",
+            JSON.stringify(agent)
+          );
+
+          // Verificar compatibilidad de target_role con el rol del usuario
+          if (
+            !isAdmin &&
+            agent.target_role !== "both" &&
+            agent.target_role !== userRole
+          ) {
+            console.log(
+              `sendMessage - Agente incompatible con el rol del usuario. Agent target_role: ${agent.target_role}, User role: ${userRole}`
+            );
+            const t = await getTranslations("chat");
+            return {
+              success: false,
+              message:
+                t("agentNotAvailableForRole") ||
+                "Este agente no está disponible para tu rol.",
+            };
+          }
+        }
+      }
+    }
+    // Prioridad 3: Buscar un agente por defecto según el rol
+    else {
+      console.log(
+        "sendMessage - Buscando agente por defecto para rol:",
+        userRole
+      );
+
+      if (isShop) {
+        // IMPORTANTE: Buscar primero un agente con target_role exactamente igual a "shop"
+        const { data: exactShopAgents } = await supabase
+          .from("agents")
+          .select("*")
+          .eq("is_active", true)
+          .eq("target_role", "shop")
+          .limit(1);
+
+        if (exactShopAgents && exactShopAgents.length > 0) {
+          agentId = exactShopAgents[0].id;
+          console.log(
+            "sendMessage - Usando agente con target_role=shop:",
+            agentId
+          );
+        } else {
+          // Si no hay agentes específicos para shop, buscar agentes con target_role="both"
+          const { data: bothAgents } = await supabase
+            .from("agents")
+            .select("*")
+            .eq("is_active", true)
+            .eq("target_role", "both")
+            .limit(1);
+
+          if (bothAgents && bothAgents.length > 0) {
+            agentId = bothAgents[0].id;
+            console.log(
+              "sendMessage - Usando agente con target_role=both para shop:",
+              agentId
+            );
+          }
+        }
+      } else {
+        // IMPORTANTE: Buscar primero un agente con target_role exactamente igual a "user"
+        const { data: exactUserAgents } = await supabase
+          .from("agents")
+          .select("*")
+          .eq("is_active", true)
+          .eq("target_role", "user")
+          .limit(1);
+
+        if (exactUserAgents && exactUserAgents.length > 0) {
+          agentId = exactUserAgents[0].id;
+          console.log(
+            "sendMessage - Usando agente con target_role=user:",
+            agentId
+          );
+        } else {
+          // Si no hay agentes específicos para user, buscar agentes con target_role="both"
+          const { data: bothAgents } = await supabase
+            .from("agents")
+            .select("*")
+            .eq("is_active", true)
+            .eq("target_role", "both")
+            .limit(1);
+
+          if (bothAgents && bothAgents.length > 0) {
+            agentId = bothAgents[0].id;
+            console.log(
+              "sendMessage - Usando agente con target_role=both para user:",
+              agentId
+            );
+          }
+        }
+      }
+    }
+
+    // Si no se encontró un agentId y no es admin, mostrar error
+    if (!agentId && !isAdmin) {
+      const t = await getTranslations("chat");
+      return {
+        success: false,
+        message: t("noAgentsAvailable") || "No hay agentes disponibles.",
+      };
+    }
+
+    // Añadir el agentId al webhook request si existe
+    if (agentId) {
+      webhookRequest.agentId = agentId;
+      console.log("sendMessage - Añadido agentId al webhook:", agentId);
+    }
+
+    // PASO 4: Enviar la solicitud al webhook
+    console.log("sendMessage - Enviando solicitud al webhook:", webhookUrl);
+    console.log(
+      "sendMessage - Cuerpo de la solicitud:",
+      JSON.stringify(webhookRequest)
+    );
 
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -194,40 +410,78 @@ export async function sendMessage(
     });
 
     if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
+      console.error(`Error en la respuesta del webhook: ${response.status}`);
+      console.error(`Texto de la respuesta: ${await response.text()}`);
+      throw new Error(`Error en la respuesta del webhook: ${response.status}`);
     }
 
-    const data = await response.text();
-    let botResponse = "";
+    const data = await response.json();
+    console.log("sendMessage - Respuesta del webhook:", JSON.stringify(data));
 
-    try {
-      const parsedData = JSON.parse(data);
-      if (Array.isArray(parsedData) && parsedData.length > 0) {
-        botResponse = parsedData[0].output || parsedData[0].response || "";
-      } else if (typeof parsedData === "object") {
-        botResponse = parsedData.output || parsedData.response || "";
+    // Extraer el mensaje de la respuesta, que puede ser un objeto o un array
+    let responseMessage = "";
+
+    if (Array.isArray(data)) {
+      // Si es un array, tomamos el output del primer elemento
+      console.log("sendMessage - La respuesta es un array");
+      if (data.length > 0 && data[0].output) {
+        responseMessage = data[0].output;
+        console.log(
+          "sendMessage - Mensaje extraído del array:",
+          responseMessage
+        );
       } else {
-        botResponse = data;
+        console.error("sendMessage - Array vacío o sin propiedad output");
+        throw new Error("Respuesta del webhook inválida: array sin datos");
       }
-    } catch {
-      botResponse = data;
+    } else if (data && typeof data === "object") {
+      // Si es un objeto, intentamos obtener la propiedad message o output
+      console.log("sendMessage - La respuesta es un objeto");
+      responseMessage = data.message || data.output || "";
+      console.log(
+        "sendMessage - Mensaje extraído del objeto:",
+        responseMessage
+      );
+    } else {
+      console.error(
+        "sendMessage - Formato de respuesta desconocido:",
+        typeof data
+      );
+      throw new Error("Respuesta del webhook en formato desconocido");
     }
 
-    return { success: true, message: botResponse };
-  } catch (error) {
-    console.error("Error al enviar mensaje:", error);
+    if (!responseMessage) {
+      console.error(
+        "sendMessage - No se pudo extraer un mensaje de la respuesta"
+      );
+      throw new Error(
+        "No se pudo extraer un mensaje de la respuesta del webhook"
+      );
+    }
 
-    // Obtener el idioma actual del usuario
-    const cookieStore = await cookies();
-    const locale = cookieStore.get("user_locale")?.value || "es";
-
-    // Obtener el mensaje de error de las traducciones según el idioma
-    const messages = await import(`../../messages/${locale}.json`);
-    const errorMessage = messages.default.chat.errorMessage;
+    // Guardar el mensaje en la base de datos
+    if (currentUser?.id) {
+      await supabase.from("messages").insert([
+        {
+          session_id: sessionId,
+          user_id: currentUser.id,
+          input: message,
+          output: responseMessage,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
 
     return {
+      success: true,
+      message: responseMessage,
+    };
+  } catch (error) {
+    console.error("Error al enviar mensaje:", error);
+    const t = await getTranslations("chat");
+    return {
       success: false,
-      message: errorMessage,
+      message: t("errorMessage") || "Error al procesar tu mensaje.",
     };
   }
 }

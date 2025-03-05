@@ -1,29 +1,14 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getAgents, updateAgent, deleteAgent } from "@/app/actions/agents";
-import { Agent } from "@/types/agents";
-import { useAuth } from "@/contexts/auth-context";
 import { useUserRole } from "@/hooks/useUserRole";
+import { getAgentById, updateAgent, deleteAgent } from "@/app/actions/agents";
+import { Agent } from "@/types/agents";
 import { toast } from "sonner";
-import {
-  Bot,
-  ArrowLeft,
-  Trash2,
-  Sparkles,
-  Shield,
-  Clock,
-  MessageSquare,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -31,6 +16,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ArrowLeft,
+  Bot,
+  Clock,
+  MessageSquare,
+  Shield,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import AgentChatPreview from "@/components/chat/agent-chat-preview";
+import { PreviewUrlGenerator } from "@/components/settings/preview-url-generator";
+import { useAuth } from "@/contexts/auth-context";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -39,15 +47,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import AgentChatPreview from "@/components/chat/agent-chat-preview";
-import { PreviewUrlGenerator } from "@/components/settings/preview-url-generator";
 
 export default function EditAgentPage() {
   const params = useParams();
@@ -66,29 +65,73 @@ export default function EditAgentPage() {
     const fetchAgent = async () => {
       setLoading(true);
       try {
-        const agentsData = await getAgents();
-        const currentAgent = agentsData.find((a) => a.id === params.agentId);
+        console.log("=== INICIO fetchAgent en EditAgentPage ===");
+        console.log("Intentando obtener agente con ID:", params.agentId);
+        console.log("Usuario es admin:", isAdmin);
+        console.log("Usuario ID:", user?.id);
+
+        // Usar getAgentById para todos los usuarios
+        // El parámetro true indica que se debe ignorar el estado de activación
+        console.log("Llamando a getAgentById con ignoreActiveStatus=true");
+        const currentAgent = await getAgentById(params.agentId as string, true);
+
+        console.log(
+          "Respuesta de getAgentById:",
+          currentAgent ? "Agente encontrado" : "Agente no encontrado"
+        );
 
         if (!currentAgent) {
+          console.error(
+            "No se pudo encontrar el agente con ID:",
+            params.agentId
+          );
+
+          // Si no se encuentra el agente, intentar una solución alternativa
+          console.log("Intentando solución alternativa con API...");
+
+          // Intentar obtener el agente directamente desde la API
+          try {
+            const response = await fetch(`/api/agents/${params.agentId}`);
+            if (response.ok) {
+              const directAgent = await response.json();
+
+              if (directAgent && directAgent.id) {
+                console.log(
+                  "Agente obtenido directamente desde API:",
+                  directAgent
+                );
+                setAgent(directAgent);
+                setLoading(false);
+                return;
+              }
+            } else {
+              console.log("API respondió con error:", response.status);
+              const errorData = await response.json();
+              console.log("Detalles del error:", errorData);
+            }
+          } catch (directError) {
+            console.error("Error al obtener el agente desde API:", directError);
+          }
+
           setError(t("settings.agentNotFound"));
+          setLoading(false);
           return;
         }
 
+        console.log("Agente encontrado:", currentAgent);
         setAgent(currentAgent);
-        setError(null);
       } catch (err) {
-        console.error("Error fetching agent:", err);
+        console.error("Error al cargar el agente:", err);
         setError(t("settings.errorLoading"));
-        toast.error(t("settings.errorLoading"));
       } finally {
         setLoading(false);
       }
     };
 
-    if (params.agentId) {
+    if (user) {
       fetchAgent();
     }
-  }, [params.agentId, t]);
+  }, [params.agentId, t, user, isAdmin]);
 
   // Verificar si el usuario es administrador o si está accediendo a su propio agente
   useEffect(() => {
@@ -104,7 +147,6 @@ export default function EditAgentPage() {
       setIsSubmitting(true);
       await updateAgent(agent);
       toast.success(t("settings.agentUpdated"));
-      router.push(`/agents/${params.userId}`);
     } catch (error) {
       console.error("Error updating agent:", error);
       toast.error(t("settings.errorUpdatingAgent"));

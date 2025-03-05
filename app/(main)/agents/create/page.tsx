@@ -64,6 +64,9 @@ export default function CreateAgentPage() {
     system_instructions: "",
     auto_assign_leads: true,
     auto_respond: true,
+    is_active: true,
+    target_role: "both",
+    target_agent_id: undefined,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

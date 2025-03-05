@@ -34,6 +34,9 @@ export default function ChatContainer({}: ChatContainerProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Verificar si se redirigió desde una sesión de chat que no existe
+  const noChat = searchParams.get("noChat") === "true";
+
   // Verificar si el usuario está autenticado
   useEffect(() => {
     async function checkAuth() {
@@ -175,6 +178,13 @@ export default function ChatContainer({}: ChatContainerProps) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80">
+      {noChat && (
+        <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 p-3 text-center text-sm">
+          {t("chatNotFound", {
+            defaultValue: "The chat session was not found or has been deleted.",
+          })}
+        </div>
+      )}
       <div
         className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-10rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
         ref={scrollRef}
@@ -270,16 +280,13 @@ export default function ChatContainer({}: ChatContainerProps) {
         <div className="container mx-auto max-w-3xl">
           {!hasUserMessages ? (
             <div className="flex flex-col items-center px-4 mb-6 text-center">
-              <span className="mb-3 text-sm text-muted-foreground animate-bounce">
-                {t("discoverQuotation") || "¡Descubre tu cotización ahora! ✨"}
-              </span>
               <Button
                 onClick={() => {
                   vibrate([40, 20, 40]);
                   handleQuotationRequest();
                 }}
                 className="group relative overflow-hidden dark:bg-zinc-800/40 bg-zinc-50 dark:hover:bg-zinc-800/60 hover:bg-zinc-100/80 
-                px-12 py-6 rounded-3xl backdrop-blur-xl
+                px-12 py-6 rounded-lg backdrop-blur-xl
                 shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset,0_8px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_8px_20px_-4px_rgba(0,0,0,0.2)]
                 hover:shadow-[0_0_0_1px_rgba(0,0,0,0.08)_inset,0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset,0_12px_24px_-4px_rgba(0,0,0,0.3)]
                 active:scale-[0.98] transition-all duration-300"

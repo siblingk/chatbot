@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Agent,
   AgentConfig,
   PersonalityTone,
   PreQuoteType,
   ExpirationTime,
+  LeadStrategy,
 } from "@/types/agents";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, Lock, Globe, Wand2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Eye, EyeOff } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,21 +22,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet";
-import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -42,11 +43,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface AgentsTabProps {
   agentConfig?: AgentConfig;
@@ -77,6 +78,9 @@ export function AgentsTab({
     system_instructions: "",
     auto_assign_leads: true,
     auto_respond: true,
+    is_active: true,
+    target_role: "both",
+    target_agent_id: undefined,
   });
 
   const handleCreateAgent = async () => {
@@ -97,6 +101,9 @@ export function AgentsTab({
         system_instructions: newAgent.system_instructions,
         auto_assign_leads: newAgent.auto_assign_leads,
         auto_respond: newAgent.auto_respond,
+        is_active: newAgent.is_active,
+        target_role: newAgent.target_role,
+        target_agent_id: newAgent.target_agent_id,
       } as Partial<Agent>;
 
       await onUpdateAgents(tempAgent as Agent);
@@ -114,6 +121,9 @@ export function AgentsTab({
         system_instructions: "",
         auto_assign_leads: true,
         auto_respond: true,
+        is_active: true,
+        target_role: "both",
+        target_agent_id: undefined,
       });
       toast.success(t("agentCreated"));
     } catch (error) {
@@ -155,261 +165,361 @@ export function AgentsTab({
 
   const renderAgentForm = (
     agent: Partial<Agent>,
-    setAgent: (agent: Partial<Agent>) => void
-  ) => (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Agent Name</h3>
-        <p className="text-sm text-muted-foreground">
-          Enter a name for your AI agent
-        </p>
-        <Input
-          value={agent.name || ""}
-          onChange={(e) => setAgent({ ...agent, name: e.target.value })}
-          placeholder="Enter agent name..."
-        />
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Select AI Agent</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose whether to use the Quote Builder AI for lead generation or the
-          Omni AI for Advanced marketing & optimization
-        </p>
-        <div className="flex gap-2">
-          <Button
-            variant={agent.model === "quote-builder-ai" ? "default" : "outline"}
-            onClick={() => setAgent({ ...agent, model: "quote-builder-ai" })}
-          >
-            <Wand2 className="h-4 w-4 mr-2" />
-            Quote Builder AI
-          </Button>
-          <Button
-            variant={agent.model === "omni-ai" ? "default" : "outline"}
-            onClick={() => setAgent({ ...agent, model: "omni-ai" })}
-          >
-            <Wand2 className="h-4 w-4 mr-2" />
-            Omni AI
-          </Button>
+    onChange: (updatedAgent: Partial<Agent>) => void
+  ) => {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="agent-name">{t("agentName")}</Label>
+          <Input
+            id="agent-name"
+            placeholder={t("enterAgentNamePlaceholder")}
+            value={agent.name || ""}
+            onChange={(e) => onChange({ ...agent, name: e.target.value })}
+          />
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">AI Personality & Tone</h3>
-        <p className="text-sm text-muted-foreground">
-          Customize how the AI interacts with customers
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {["Formal", "Friendly", "Sales-Driven", "Sales-Focused"].map(
-            (tone) => (
-              <Button
-                key={tone}
-                variant={
-                  agent.personality_tone === tone ? "default" : "outline"
-                }
-                onClick={() =>
-                  setAgent({
-                    ...agent,
-                    personality_tone: tone as PersonalityTone,
-                  })
-                }
-              >
-                {tone}
-              </Button>
-            )
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Lead Qualification Strategy</h3>
-        <p className="text-sm text-muted-foreground">
-          Determine how AI filters incoming leads
-        </p>
-        <div className="flex gap-2">
-          <Button
-            variant={
-              agent.lead_strategy === "Strict-Filtering" ? "default" : "outline"
-            }
-            onClick={() =>
-              setAgent({ ...agent, lead_strategy: "Strict-Filtering" })
+        <div className="space-y-2">
+          <Label htmlFor="agent-model">{t("agentModel")}</Label>
+          <Select
+            value={agent.model || "quote-builder-ai"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                model: value as "quote-builder-ai" | "omni-ai",
+              })
             }
           >
-            Strict Filtering
-          </Button>
-          <Button
-            variant={
-              agent.lead_strategy === "Smart-Targeting" ? "default" : "outline"
-            }
-            onClick={() =>
-              setAgent({ ...agent, lead_strategy: "Smart-Targeting" })
+            <SelectTrigger>
+              <SelectValue placeholder={t("selectAIAgent")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="quote-builder-ai">
+                {t("quoteBuilderAI")}
+              </SelectItem>
+              <SelectItem value="omni-ai">{t("omniAI")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t("chooseAIType")}</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="agent-visibility">{t("agentVisibility")}</Label>
+          <Select
+            value={agent.visibility || "private"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                visibility: value as "private" | "public",
+              })
             }
           >
-            Smart Targeting
-          </Button>
+            <SelectTrigger>
+              <SelectValue placeholder={t("selectVisibility")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="private">{t("private")}</SelectItem>
+              <SelectItem value="public">{t("public")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Custom Welcome Message</h3>
-        <Tabs defaultValue="standard" className="w-full">
-          <TabsList>
-            <TabsTrigger value="standard">Standard Bot Chat</TabsTrigger>
-            <TabsTrigger value="custom">Custom Welcome Message</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Textarea
-          placeholder="e.g. Welcome to AutoFix! How can we assist you today?"
-          value={agent.welcome_message}
-          onChange={(e) =>
-            setAgent({ ...agent, welcome_message: e.target.value })
-          }
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="agent-status">{t("agentStatus")}</Label>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="agent-status"
+              checked={agent.is_active !== false}
+              onCheckedChange={(checked) =>
+                onChange({ ...agent, is_active: checked })
+              }
+            />
+            <Label htmlFor="agent-status" className="cursor-pointer">
+              {agent.is_active !== false
+                ? t("agentActive")
+                : t("agentInactive")}
+            </Label>
+          </div>
+        </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Pre-Quote Delivery Message</h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            "Standard",
-            "With Warranty",
-            "Detailed Explanation",
-            "Special Offer",
-            "Custom",
-          ].map((type) => (
-            <Button
-              key={type}
-              variant={agent.pre_quote_type === type ? "default" : "outline"}
-              onClick={() =>
-                setAgent({ ...agent, pre_quote_type: type as PreQuoteType })
+        <div className="space-y-2">
+          <Label htmlFor="agent-target-role">{t("agentTargetRole")}</Label>
+          <Select
+            value={agent.target_role || "both"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                target_role: value as "user" | "shop" | "both",
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("agentTargetRole")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">{t("agentTargetRoleUser")}</SelectItem>
+              <SelectItem value="shop">{t("agentTargetRoleShop")}</SelectItem>
+              <SelectItem value="both">{t("agentTargetRoleBoth")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {t("agentTargetRoleDescription")}
+          </p>
+        </div>
+
+        {agentConfig && agentConfig.agents && agentConfig.agents.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="agent-target-agent">{t("agentTargetAgent")}</Label>
+            <Select
+              value={agent.target_agent_id || ""}
+              onValueChange={(value) =>
+                onChange({
+                  ...agent,
+                  target_agent_id: value === "" ? undefined : value,
+                })
               }
             >
-              {type}
-            </Button>
-          ))}
+              <SelectTrigger>
+                <SelectValue placeholder={t("agentTargetAgent")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("agentTargetAgentNone")}</SelectItem>
+                {agentConfig.agents
+                  .filter((a) => a.id !== agent.id)
+                  .map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {t("agentTargetAgentDescription")}
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="agent-personality">{t("agentPersonality")}</Label>
+          <Select
+            value={agent.personality_tone || "Friendly"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                personality_tone: value as PersonalityTone,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("agentPersonality")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Friendly">Friendly</SelectItem>
+              <SelectItem value="Formal">Formal</SelectItem>
+              <SelectItem value="Sales-Driven">Sales-Driven</SelectItem>
+              <SelectItem value="Sales-Focused">Sales-Focused</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {t("customizeAIInteraction")}
+          </p>
         </div>
-        <Textarea
-          placeholder="Your repair estimate is between $x, $y"
-          value={agent.pre_quote_message}
-          onChange={(e) =>
-            setAgent({ ...agent, pre_quote_message: e.target.value })
-          }
-        />
-      </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Pre-Quote Expiration Time</h3>
-        <div className="flex flex-wrap gap-2">
-          {["24 Hours", "3 Hours", "7 Days", "Custom"].map((time) => (
-            <Button
-              key={time}
-              variant={agent.expiration_time === time ? "default" : "outline"}
-              onClick={() =>
-                setAgent({ ...agent, expiration_time: time as ExpirationTime })
-              }
-            >
-              {time}
-            </Button>
-          ))}
+        <div className="space-y-2">
+          <Label htmlFor="agent-lead-strategy">{t("agentLeadStrategy")}</Label>
+          <Select
+            value={agent.lead_strategy || "Smart-Targeting"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                lead_strategy: value as LeadStrategy,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("agentLeadStrategy")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Strict-Filtering">
+                {t("strictFiltering")}
+              </SelectItem>
+              <SelectItem value="Smart-Targeting">
+                {t("smartTargeting")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {t("determineLeadFiltering")}
+          </p>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">System Instructions</h3>
-        <p className="text-sm text-muted-foreground">
-          Upload or edit system instructions to control behavior
-        </p>
-        <Textarea
-          placeholder="Define AI rules and logic here..."
-          value={agent.system_instructions}
-          onChange={(e) =>
-            setAgent({ ...agent, system_instructions: e.target.value })
-          }
-          className="min-h-[100px]"
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="agent-welcome-message">
+            {t("agentWelcomeMessage")}
+          </Label>
+          <Textarea
+            id="agent-welcome-message"
+            placeholder={t("welcomeMessagePlaceholder")}
+            value={agent.welcome_message || ""}
+            onChange={(e) =>
+              onChange({ ...agent, welcome_message: e.target.value })
+            }
+            rows={3}
+          />
+        </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Workflow Automation</h3>
-        <p className="text-sm text-muted-foreground">
-          Define how AI manages lead assignment and response automation
-        </p>
+        <div className="space-y-2">
+          <Label htmlFor="agent-pre-quote-message">
+            {t("agentPreQuoteMessage")}
+          </Label>
+          <Textarea
+            id="agent-pre-quote-message"
+            placeholder={t("preQuoteMessagePlaceholder")}
+            value={agent.pre_quote_message || ""}
+            onChange={(e) =>
+              onChange({ ...agent, pre_quote_message: e.target.value })
+            }
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="agent-pre-quote-type">{t("agentPreQuoteType")}</Label>
+          <Select
+            value={agent.pre_quote_type || "Standard"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                pre_quote_type: value as PreQuoteType,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("agentPreQuoteType")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Standard">Standard</SelectItem>
+              <SelectItem value="With Warranty">With Warranty</SelectItem>
+              <SelectItem value="Detailed Explanation">
+                Detailed Explanation
+              </SelectItem>
+              <SelectItem value="Special Offer">Special Offer</SelectItem>
+              <SelectItem value="Custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="agent-expiration-time">
+            {t("agentExpirationTime")}
+          </Label>
+          <Select
+            value={agent.expiration_time || "24 Hours"}
+            onValueChange={(value) =>
+              onChange({
+                ...agent,
+                expiration_time: value as ExpirationTime,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("agentExpirationTime")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="24 Hours">24 Hours</SelectItem>
+              <SelectItem value="3 Hours">3 Hours</SelectItem>
+              <SelectItem value="7 Days">7 Days</SelectItem>
+              <SelectItem value="Custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="agent-system-instructions">
+            {t("agentSystemInstructions")}
+          </Label>
+          <Textarea
+            id="agent-system-instructions"
+            placeholder={t("systemInstructionsPlaceholder")}
+            value={agent.system_instructions || ""}
+            onChange={(e) =>
+              onChange({ ...agent, system_instructions: e.target.value })
+            }
+            rows={5}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("systemInstructionsDescription")}
+          </p>
+        </div>
+
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Auto-Assign Leads</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically assign new leads to available agents
-              </p>
-            </div>
+          <div>
+            <h3 className="text-sm font-medium">{t("workflowAutomation")}</h3>
+            <p className="text-xs text-muted-foreground">
+              {t("workflowAutomationDescription")}
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2">
             <Switch
-              checked={agent.auto_assign_leads}
+              id="auto-assign-leads"
+              checked={agent.auto_assign_leads !== false}
               onCheckedChange={(checked) =>
-                setAgent({ ...agent, auto_assign_leads: checked })
+                onChange({ ...agent, auto_assign_leads: checked })
               }
             />
+            <Label htmlFor="auto-assign-leads" className="cursor-pointer">
+              {t("autoAssignLeads")}
+            </Label>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>AI Auto-Response</Label>
-              <p className="text-sm text-muted-foreground">
-                Enable AI to automatically respond to customer inquiries
-              </p>
-            </div>
+          <p className="text-xs text-muted-foreground pl-7">
+            {t("autoAssignLeadsDescription")}
+          </p>
+
+          <div className="flex items-center space-x-2">
             <Switch
-              checked={agent.auto_respond}
+              id="auto-respond"
+              checked={agent.auto_respond !== false}
               onCheckedChange={(checked) =>
-                setAgent({ ...agent, auto_respond: checked })
+                onChange({ ...agent, auto_respond: checked })
               }
             />
+            <Label htmlFor="auto-respond" className="cursor-pointer">
+              {t("aiAutoResponse")}
+            </Label>
           </div>
+          <p className="text-xs text-muted-foreground pl-7">
+            {t("aiAutoResponseDescription")}
+          </p>
         </div>
       </div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Visibility</h3>
-        <Select
-          value={agent.visibility}
-          onValueChange={(value: "private" | "public") =>
-            setAgent({ ...agent, visibility: value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select visibility" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="private">
-              <div className="flex items-center">
-                <Lock className="h-4 w-4 mr-2" />
-                Private
-              </div>
-            </SelectItem>
-            <SelectItem value="public">
-              <div className="flex items-center">
-                <Globe className="h-4 w-4 mr-2" />
-                Public
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button className="self-end" onClick={() => setIsCreateSheetOpen(true)}>
-        <PlusCircle className="h-4 w-4 mr-2" />
-        {t("createAgent")}
-      </Button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-semibold">{t("agents")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("agentsDescription")}
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateSheetOpen(true)}>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          {t("createAgent")}
+        </Button>
+      </div>
 
-      {agentConfig?.agents && agentConfig.agents.length > 0 ? (
+      {agentConfig && agentConfig.agents && agentConfig.agents.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("name")}</TableHead>
-              <TableHead>{t("model")}</TableHead>
-              <TableHead>{t("visibility")}</TableHead>
+              <TableHead>{t("agentName")}</TableHead>
+              <TableHead>{t("agentModel")}</TableHead>
+              <TableHead>{t("agentVisibility")}</TableHead>
+              <TableHead>{t("agentStatus")}</TableHead>
+              <TableHead>{t("agentTargetRole")}</TableHead>
               <TableHead className="text-right">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -418,23 +528,58 @@ export function AgentsTab({
               <TableRow key={agent.id}>
                 <TableCell className="font-medium">{agent.name}</TableCell>
                 <TableCell>{agent.model}</TableCell>
+                <TableCell>{agent.visibility}</TableCell>
                 <TableCell>
-                  <div className="flex items-center">
-                    {agent.visibility === "private" ? (
-                      <div key="private" className="flex items-center">
-                        <Lock className="h-4 w-4 mr-2" />
-                        {t("private")}
-                      </div>
-                    ) : (
-                      <div key="public" className="flex items-center">
-                        <Globe className="h-4 w-4 mr-2" />
-                        {t("public")}
-                      </div>
-                    )}
-                  </div>
+                  <Badge
+                    variant={agent.is_active !== false ? "default" : "outline"}
+                    className={agent.is_active !== false ? "bg-green-500" : ""}
+                  >
+                    {agent.is_active !== false
+                      ? t("agentActive")
+                      : t("agentInactive")}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {t(
+                    `agentTargetRole${
+                      agent.target_role
+                        ? agent.target_role.charAt(0).toUpperCase() +
+                          agent.target_role.slice(1)
+                        : "Both"
+                    }`
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const updatedAgent = {
+                          ...agent,
+                          is_active: !agent.is_active,
+                        };
+                        if (onUpdateAgents) {
+                          onUpdateAgents(updatedAgent);
+                          toast.success(
+                            agent.is_active
+                              ? t("agentDeactivated")
+                              : t("agentActivated")
+                          );
+                        }
+                      }}
+                    >
+                      {agent.is_active !== false ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">
+                        {agent.is_active !== false
+                          ? t("deactivateAgent")
+                          : t("activateAgent")}
+                      </span>
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -477,7 +622,6 @@ export function AgentsTab({
         </div>
       )}
 
-      {/* Sheet para crear un nuevo agente */}
       <Sheet open={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
@@ -497,7 +641,6 @@ export function AgentsTab({
         </SheetContent>
       </Sheet>
 
-      {/* Sheet para editar un agente */}
       <Sheet open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
@@ -519,7 +662,6 @@ export function AgentsTab({
         </SheetContent>
       </Sheet>
 
-      {/* Diálogo para confirmar eliminación */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>

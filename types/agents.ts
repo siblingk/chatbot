@@ -29,6 +29,9 @@ export interface Agent {
   created_at: string;
   updated_at: string;
   user_id: string;
+  is_active: boolean;
+  target_role: "user" | "shop" | "admin" | "both";
+  target_agent_id?: string;
 }
 
 export interface AgentConfig {

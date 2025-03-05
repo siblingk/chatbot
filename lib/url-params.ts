@@ -22,6 +22,9 @@ export const chatParams = {
   auto_assign_leads: parseAsString,
   auto_respond: parseAsString,
   user_id: parseAsString,
+  is_active: parseAsString,
+  target_role: parseAsString,
+  target_agent_id: parseAsString,
 
   // Parámetros adicionales
   initialMessage: parseAsString,

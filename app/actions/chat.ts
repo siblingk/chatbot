@@ -65,13 +65,15 @@ export async function updateMessages(messages: Message[]): Promise<void> {
     maxAge: 60 * 60 * 24 * 7, // 7 días
   });
 
-  // Guardar mensajes en la base de datos
+  // Guardar mensajes en la base de datos solo si el usuario está autenticado
   if (messages.length > 0) {
     const supabase = await createClient(cookiesList);
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
+    const { data: userData, error } = await supabase.auth.getUser();
 
-    if (userId) {
+    // Solo guardar en la base de datos si hay un usuario autenticado
+    if (!error && userData?.user?.id) {
+      const userId = userData.user.id;
+
       // Obtener el último mensaje para usarlo como título si no hay uno definido
       const lastUserMessage = [...messages].reverse().find((m) => m.isUser);
       const sessionId = messages[0].session_id;

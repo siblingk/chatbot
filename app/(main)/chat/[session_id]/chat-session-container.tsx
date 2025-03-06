@@ -359,36 +359,21 @@ export default function ChatSessionContainer({
   }, [urlAgentId, effectiveAgentId, sessionId]);
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-background to-background/80">
-      {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
-      {showWelcomeCard && (
-        <div className="sticky top-0 z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
-          <div className="container mx-auto max-w-3xl">
-            <AgentWelcomeCard agentId={effectiveAgentId} />
-          </div>
-        </div>
-      )}
-
+    <div className="flex flex-col h-full overflow-hidden relative">
       <div
+        className="flex-1 overflow-y-auto p-4 pb-32 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
       >
-        <div className="container mx-auto max-w-3xl">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-              <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">
-                {t("welcomeTitle") || "¡Bienvenido a tu nueva conversación!"}
-              </h3>
-              <p className="text-muted-foreground max-w-md mb-6">
-                {t("welcomeMessage") ||
-                  "Esta es una nueva sesión de chat. Escribe tu primer mensaje para comenzar."}
-              </p>
+        {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
+        {showWelcomeCard && (
+          <div className="z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
+            <div className="container mx-auto max-w-3xl">
+              <AgentWelcomeCard agentId={effectiveAgentId} />
             </div>
-          )}
+          </div>
+        )}
 
+        <div className="container max-w-3xl mx-auto space-y-6">
           <AnimatePresence initial={false}>
             {messages.map((message) => (
               <motion.div
@@ -508,11 +493,14 @@ export default function ChatSessionContainer({
         )}
       </AnimatePresence>
 
-      <div className="container px-2 mx-auto max-w-3xl pb-4">
-        <MessageInput
-          onSubmit={handleSubmit}
-          disabled={chatState === "error"}
-        />
+      <div className="absolute bottom-0 left-0 right-0 z-10">
+        <div className="container px-2 mx-auto max-w-3xl pb-4">
+          <MessageInput
+            onSubmit={handleSubmit}
+            disabled={chatState === "error"}
+            className="bg-gradient-to-t from-background to-transparent pt-6"
+          />
+        </div>
       </div>
     </div>
   );

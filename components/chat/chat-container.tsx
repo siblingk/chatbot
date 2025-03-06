@@ -191,7 +191,7 @@ export default function ChatContainer({}: ChatContainerProps) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80">
+    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative">
       {noChat && (
         <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 p-3 text-center text-sm">
           {t("chatNotFound", {
@@ -201,7 +201,7 @@ export default function ChatContainer({}: ChatContainerProps) {
       )}
 
       <div
-        className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-10rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
+        className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent pb-32"
         ref={scrollRef}
       >
         {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
@@ -212,7 +212,7 @@ export default function ChatContainer({}: ChatContainerProps) {
             </div>
           </div>
         )}
-        <div className="container max-w-3xl mx-auto space-y-6 pb-20">
+        <div className="container max-w-3xl mx-auto space-y-6">
           <AnimatePresence initial={false}>
             {messages.map((message) => (
               <motion.div
@@ -299,7 +299,7 @@ export default function ChatContainer({}: ChatContainerProps) {
         </div>
       </div>
 
-      <div className="p-4 relative z-10">
+      <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
         <div className="container mx-auto max-w-3xl">
           {!hasUserMessages ? (
             <div className="flex flex-col items-center px-4 mb-6 text-center">
@@ -331,6 +331,7 @@ export default function ChatContainer({}: ChatContainerProps) {
                 vibrate([40, 20, 40]);
                 return handleSubmit(formData);
               }}
+              className="bg-gradient-to-t from-background to-transparent"
             />
           )}
         </div>

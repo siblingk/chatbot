@@ -95,7 +95,7 @@ export function AgentWelcomeCard({ agentId }: AgentWelcomeCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="mb-6 bg-background border-none shadow-none">
+      <Card className="mb-6 bg-sidebar p-0 border-none shadow-sm font-normal tracking-wide rounded-none">
         <CardHeader className="py-4">
           <CardTitle className="text-md flex items-center gap-2 text-primary">
             <Bot className="h-5 w-5 text-primary" />

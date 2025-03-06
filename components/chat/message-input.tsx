@@ -3,93 +3,97 @@
 import { useRef, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Forward, Sparkles } from "lucide-react";
+import { Forward } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 interface MessageInputProps {
   onSubmit: (formData: FormData) => Promise<void>;
   disabled?: boolean;
+  className?: string;
 }
 
 export function MessageInput({
   onSubmit,
   disabled = false,
+  className,
 }: MessageInputProps) {
   const t = useTranslations("chat");
-  const formRef = useRef<HTMLFormElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isFocused, setIsFocused] = useState(false);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  // Mantener el foco en el input constantemente
-  useEffect(() => {
-    const focusInput = () => {
-      if (
-        inputRef.current &&
-        document.activeElement !== inputRef.current &&
-        !disabled
-      ) {
-        inputRef.current.focus();
-      }
-    };
-
-    // Foco inicial
-    focusInput();
-
-    // Mantener el foco después de cualquier cambio
-    const interval = setInterval(focusInput, 100);
-
-    // Evento para mantener el foco al hacer clic en cualquier parte
-    const handleClick = () => {
-      setTimeout(focusInput, 0);
-    };
-
-    document.addEventListener("click", handleClick);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("click", handleClick);
-    };
-  }, [disabled]);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!message.trim() || disabled || isSubmitting) return;
-
-    const formData = new FormData();
-    formData.append("message", message);
-
-    // Limpiar el input inmediatamente
-    setMessage("");
-
-    // Asegurar que el input esté enfocado después de limpiar
+  // Función para enfocar el input
+  const focusInput = () => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
+  };
 
-    // Marcar como enviando
-    setIsSubmitting(true);
+  // Enfocar el input al cargar el componente
+  useEffect(() => {
+    focusInput();
+  }, []);
 
-    // Enviar el mensaje en un proceso separado
-    setTimeout(async () => {
-      try {
-        await onSubmit(formData);
-      } catch (error) {
-        console.error("Error al enviar el mensaje:", error);
-      } finally {
-        setIsSubmitting(false);
+  // Manejar el evento de tecla para enfocar el input con la tecla /
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement !== inputRef.current) {
+        e.preventDefault();
+        focusInput();
       }
-    }, 0);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleClick = () => {
+    if (message.trim() && !isSubmitting && !disabled) {
+      const formData = new FormData();
+      formData.append("message", message.trim());
+      setIsSubmitting(true);
+      setMessage("");
+
+      // Enviar el mensaje después de un pequeño retraso para la animación
+      setTimeout(async () => {
+        try {
+          await onSubmit(formData);
+        } catch (error) {
+          console.error("Error al enviar el mensaje:", error);
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, 0);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (message.trim() && !isSubmitting && !disabled) {
+      const formData = new FormData();
+      formData.append("message", message.trim());
+      setIsSubmitting(true);
+      setMessage("");
+
+      // Enviar el mensaje después de un pequeño retraso para la animación
+      setTimeout(async () => {
+        try {
+          await onSubmit(formData);
+        } catch (error) {
+          console.error("Error al enviar el mensaje:", error);
+        } finally {
+          setIsSubmitting(false);
+        }
+      }, 0);
+    }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-    >
+    <div className={cn("w-full", className)}>
       <motion.form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -108,62 +112,36 @@ export function MessageInput({
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t("placeholder")}
             autoComplete="off"
-            className="h-12 pl-5 pr-12 rounded-full shadow-sm transition-all duration-200 border-muted-foreground/10 focus:border-primary/30 bg-background focus:bg-background"
+            className="h-12 pl-5 pr-12 rounded-full shadow-sm transition-all duration-200 border-muted-foreground/10 focus:border-primary/30 bg-background/90 focus:bg-background"
             disabled={isSubmitting || disabled}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            autoFocus
           />
-          <AnimatePresence mode="wait">
-            {isSubmitting ? (
+
+          <AnimatePresence>
+            {message.trim() && (
               <motion.div
-                key="loading"
-                initial={{ opacity: 0, scale: 0.8, rotate: 0 }}
-                animate={{ opacity: 1, scale: 1, rotate: 360 }}
-                exit={{ opacity: 0, scale: 0.8, rotate: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="absolute right-3 top-3"
-              >
-                <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </motion.div>
-            ) : message.trim() ? (
-              <motion.div
-                key="button"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
-                className="absolute right-3 top-2.5"
+                transition={{ duration: 0.15 }}
+                className="absolute right-3 top-2 -translate-y-1/2"
               >
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="h-8 w-8 bg-primary rounded-full hover:bg-primary/90"
+                  disabled={isSubmitting || disabled}
+                  onClick={handleClick}
                 >
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="h-7 w-7 rounded-full bg-primary hover:bg-primary/90"
-                    disabled={isSubmitting || disabled}
-                    aria-label={t("send")}
-                  >
-                    <Forward className="h-3.5 w-3.5 text-primary-foreground" />
-                  </Button>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="sparkle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                className="absolute right-3.5 top-3.5"
-              >
-                <Sparkles className="h-5 w-5 text-primary/40" />
+                  <Forward className="h-4 w-4 text-primary-foreground" />
+                  <span className="sr-only">{t("send")}</span>
+                </Button>
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
       </motion.form>
-    </motion.div>
+    </div>
   );
 }

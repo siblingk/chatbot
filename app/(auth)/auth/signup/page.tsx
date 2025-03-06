@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -13,45 +13,46 @@ import { Separator } from "@/components/ui/separator";
 export default function SignUpPage() {
   const t = useTranslations("auth");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
 
-  const handleSignUp = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError("");
-    setLoading(true);
 
+    const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
     if (password !== confirmPassword) {
       setError(t("passwordMismatch"));
-      setLoading(false);
       return;
     }
 
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    // Usar useTransition para evitar que la UI se bloquee
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        setError(data.error || t("signUpError"));
-        return;
+        if (!response.ok) {
+          setError(data.error || t("signUpError"));
+          return;
+        }
+
+        setSuccess(true);
+      } catch {
+        setError(t("signUpError"));
       }
-
-      setSuccess(true);
-    } catch {
-      setError(t("signUpError"));
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   if (success) {
@@ -95,7 +96,7 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        <form action={handleSignUp} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -152,10 +153,10 @@ export default function SignUpPage() {
           <Button
             type="submit"
             className="w-full flex items-center justify-center gap-2"
-            disabled={loading}
+            disabled={isPending}
           >
             <UserPlus className="h-4 w-4" />
-            {loading ? t("signUpLoading") : t("signUpButton")}
+            {isPending ? t("signUpLoading") : t("signUpButton")}
           </Button>
 
           <div className="text-center mt-4">

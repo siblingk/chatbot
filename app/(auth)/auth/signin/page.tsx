@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { signIn } from "@/app/actions/auth";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,29 +15,33 @@ import { Separator } from "@/components/ui/separator";
 export default function SignInPage() {
   const t = useTranslations("auth");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  const handleSignIn = async (formData: FormData) => {
+  // Función para manejar el envío del formulario
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError("");
-    setLoading(true);
 
-    try {
-      const result = await signIn(formData);
+    const formData = new FormData(e.currentTarget);
 
-      if (result.error) {
-        setError(result.error);
-        return;
+    // Usar useTransition para evitar que la UI se bloquee
+    startTransition(async () => {
+      try {
+        const result = await signIn(formData);
+
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+
+        // Redireccionar al usuario a la página principal después de iniciar sesión
+        router.push("/");
+        router.refresh();
+      } catch {
+        setError(t("signInError"));
       }
-
-      // Redirect user to home page after sign in
-      router.push("/");
-      router.refresh();
-    } catch {
-      setError(t("signInError"));
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   return (
@@ -61,7 +65,7 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <form action={handleSignIn} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -101,10 +105,10 @@ export default function SignInPage() {
           <Button
             type="submit"
             className="w-full flex items-center justify-center gap-2"
-            disabled={loading}
+            disabled={isPending}
           >
             <LogIn className="h-4 w-4" />
-            {loading ? t("signInLoading") : t("signInButton")}
+            {isPending ? t("signInLoading") : t("signInButton")}
           </Button>
 
           <div className="text-center mt-4">

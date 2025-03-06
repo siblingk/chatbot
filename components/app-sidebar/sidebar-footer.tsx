@@ -51,7 +51,7 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
-                  <Avatar className="h-6 w-6 mr-2">
+                  <Avatar className="h-4 w-4">
                     <AvatarImage src={user?.user_metadata?.avatar_url} />
                     <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>

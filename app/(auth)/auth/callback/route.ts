@@ -12,6 +12,9 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // URL to redirect to after sign in process completes with refresh parameter
-  return NextResponse.redirect(`${requestUrl.origin}?refresh=true`);
+  // URL to redirect to after sign in process completes
+  // Añadimos un timestamp para forzar la actualización
+  return NextResponse.redirect(
+    `${requestUrl.origin}?refresh=true&t=${Date.now()}`
+  );
 }

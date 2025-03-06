@@ -19,6 +19,17 @@
     "delete": "Delete",
     "noChats": "No chats available"
   },
+  "navbar": {
+    "prequote": "Prequote",
+    "appointment": "Appointment",
+    "quote": "Quote",
+    "feedback": "Feedback",
+    "invoice": "Invoice",
+    "chat": "Chat",
+    "ai": "AI",
+    "moreOptions": "More options",
+    "mostRecent": "Most Recent"
+  },
   "auth": {
     "signIn": "Sign In",
     "signOut": "Sign Out",

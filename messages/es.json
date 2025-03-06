@@ -19,6 +19,17 @@
     "delete": "Eliminar",
     "noChats": "No hay chats disponibles"
   },
+  "navbar": {
+    "prequote": "Precotización",
+    "appointment": "Cita",
+    "quote": "Cotización",
+    "feedback": "Comentarios",
+    "invoice": "Factura",
+    "chat": "Chat",
+    "ai": "IA",
+    "moreOptions": "Más opciones",
+    "mostRecent": "El más Actual"
+  },
   "auth": {
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",

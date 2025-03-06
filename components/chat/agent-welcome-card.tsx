@@ -17,7 +17,6 @@ export function AgentWelcomeCard({ agentId }: AgentWelcomeCardProps) {
   const t = useTranslations("chat");
   const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const [agentName, setAgentName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
   const urlAgentId = searchParams.get("agentId") || undefined;
   const { isShop } = useUserRole();
@@ -78,39 +77,14 @@ export function AgentWelcomeCard({ agentId }: AgentWelcomeCardProps) {
       } catch (error) {
         console.error("Error al obtener información del agente:", error);
         setWelcomeMessage(t("initialMessage"));
-      } finally {
-        setLoading(false);
-        console.log("=== FIN AgentWelcomeCard ===");
       }
     }
 
-    // Reiniciar el estado cuando cambia el agentId
-    setLoading(true);
     setWelcomeMessage(null);
     setAgentName(null);
 
     fetchAgentInfo();
   }, [agentId, urlAgentId, t, isShop]);
-
-  // Si está cargando, mostrar un indicador de carga
-  if (loading) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="mb-4 border-primary/20 bg-primary/5 shadow-md backdrop-blur-sm">
-          <CardHeader className="pb-2 pt-3">
-            <CardTitle className="text-md flex items-center gap-2 text-primary">
-              <Bot className="h-5 w-5 text-primary" />
-              Cargando mensaje de bienvenida...
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </motion.div>
-    );
-  }
 
   // Siempre mostrar la tarjeta, incluso si no hay mensaje de bienvenida específico
   const messageToShow = welcomeMessage || t("initialMessage");
@@ -121,8 +95,8 @@ export function AgentWelcomeCard({ agentId }: AgentWelcomeCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="mb-4 border-primary/20 bg-primary/5 shadow-md backdrop-blur-sm">
-        <CardHeader className="pb-2 pt-3">
+      <Card className="mb-6 bg-background border-none shadow-none">
+        <CardHeader className="py-4">
           <CardTitle className="text-md flex items-center gap-2 text-primary">
             <Bot className="h-5 w-5 text-primary" />
             {agentName ? `${agentName}` : "Welcome to siblingk"}

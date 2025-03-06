@@ -8,7 +8,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -20,6 +19,7 @@ import { SignOutButton } from "@/components/auth/auth-buttons";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SidebarFooterProps {
   user: {
@@ -32,11 +32,10 @@ interface SidebarFooterProps {
 }
 
 export function SidebarFooter({ user }: SidebarFooterProps) {
-  const { open } = useSidebar();
   const { openSettingsModal } = useSettingsModal();
   const { isAdmin } = useUserRole();
   const t = useTranslations();
-
+  const isMobile = useIsMobile();
   // Obtener las iniciales del email del usuario para el avatar fallback
   const getUserInitials = () => {
     if (!user || !user.email) return "U";
@@ -59,11 +58,10 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                side={open ? "top" : "right"}
-                align={open ? "start" : "end"}
-                className={`${
-                  open ? "w-[--radix-popper-anchor-width]" : "w-full"
-                }`}
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side={isMobile ? "bottom" : "right"}
+                align="end"
+                sideOffset={4}
               >
                 <DropdownMenuItem onClick={openSettingsModal}>
                   <Settings className="mr-2 h-4 w-4" />
@@ -96,11 +94,10 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                side={open ? "top" : "right"}
-                align={open ? "start" : "end"}
-                className={`${
-                  open ? "w-[--radix-popper-anchor-width]" : "w-full"
-                }`}
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side={isMobile ? "bottom" : "right"}
+                align="end"
+                sideOffset={4}
               >
                 <DropdownMenuItem onClick={openSettingsModal}>
                   <Settings className="mr-2 h-4 w-4" />

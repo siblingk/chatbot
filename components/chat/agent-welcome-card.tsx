@@ -125,7 +125,7 @@ export function AgentWelcomeCard({ agentId }: AgentWelcomeCardProps) {
         <CardHeader className="pb-2 pt-3">
           <CardTitle className="text-md flex items-center gap-2 text-primary">
             <Bot className="h-5 w-5 text-primary" />
-            {agentName ? `Mensaje de ${agentName}` : "Mensaje de bienvenida"}
+            {agentName ? `${agentName}` : "Welcome to siblingk"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-3">

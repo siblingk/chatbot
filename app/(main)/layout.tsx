@@ -13,6 +13,7 @@ import { NavBar } from "@/components/nav-bar";
 import { SettingsModalProvider } from "@/contexts/settings-modal-context";
 import { GlobalSettingsModal } from "@/components/settings/global-settings-modal";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { AuthRefresh } from "@/components/auth/auth-refresh";
 
 import "@/app/globals.css";
 import { NextIntlClientProvider } from "next-intl";
@@ -50,6 +51,7 @@ export default async function MainLayout({
               <LanguageProvider>
                 <SettingsModalProvider>
                   <SidebarProvider defaultOpen={false}>
+                    <AuthRefresh />
                     <AppSidebar />
                     <div className="flex flex-col min-h-screen w-full">
                       <NavBar />

@@ -4,12 +4,19 @@ import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export function SignOutButton() {
   const t = useTranslations("auth");
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.refresh();
+  };
 
   return (
-    <form action={signOut}>
+    <form action={handleSignOut}>
       <button
         type="submit"
         className="flex text-sm items-center gap-2 px-2.5 py-1.5"

@@ -1,24 +1,33 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageInput } from "@/components/chat/message-input";
 import { sendMessage, updateMessages } from "@/app/actions/chat";
 import { generateUUID } from "@/utils/uuid";
 import { Message } from "@/types/chat";
 import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
+import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
+import { useSearchParams } from "next/navigation";
 
 // Interfaz para los mensajes que vienen de la base de datos
 interface ChatMessage {
   id: string;
-  session_id: string;
+  content?: string;
+  role?: string;
+  created_at?: string;
+  session_id?: string;
   input?: string;
   output?: string;
-  timestamp: string; // Ahora es string porque lo serializamos
+  timestamp?: string;
   user_id?: string;
+  metadata?: {
+    agentId?: string;
+    [key: string]: string | number | boolean | null | undefined;
+  };
 }
 
 interface ChatSessionContainerProps {
@@ -34,13 +43,18 @@ export default function ChatSessionContainer({
   initialMessages,
 }: ChatSessionContainerProps) {
   const t = useTranslations("chat");
+  const searchParams = useSearchParams();
+  const urlAgentId = searchParams.get("agentId");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [chatState, setChatState] = useState<ChatState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const searchParams = useSearchParams();
+  const [effectiveAgentId, setEffectiveAgentId] = useState<string | undefined>(
+    urlAgentId || undefined
+  );
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showWelcomeCard, setShowWelcomeCard] = useState(true);
 
   // Convertir los mensajes del historial al formato que usa el chat
   useEffect(() => {
@@ -53,7 +67,7 @@ export default function ChatSessionContainer({
           id: `${msg.id}-input`,
           text: msg.input,
           isUser: true,
-          timestamp: new Date(msg.timestamp),
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
           session_id: sessionId,
           input: msg.input,
         });
@@ -65,7 +79,7 @@ export default function ChatSessionContainer({
           id: `${msg.id}-output`,
           text: msg.output,
           isUser: false,
-          timestamp: new Date(msg.timestamp),
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
           session_id: sessionId,
           input: "",
         });
@@ -85,6 +99,95 @@ export default function ChatSessionContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages, sessionId]);
 
+  // Función para obtener el agentId de la sesión
+  const getSessionAgentId = useCallback(async () => {
+    console.log("=== INICIO getSessionAgentId ===");
+    console.log("SessionId:", sessionId);
+    console.log("UrlAgentId:", urlAgentId);
+
+    // Si ya tenemos un agentId en la URL, usarlo directamente
+    if (urlAgentId) {
+      console.log("Usando agentId de la URL:", urlAgentId);
+      setEffectiveAgentId(urlAgentId);
+      console.log("=== FIN getSessionAgentId ===");
+      return;
+    }
+
+    // Si tenemos mensajes, buscar el agentId en ellos
+    if (initialMessages && initialMessages.length > 0) {
+      console.log("Buscando agentId en los mensajes iniciales...");
+
+      // Ordenar mensajes por fecha (más recientes primero)
+      const sortedMessages = [...initialMessages].sort((a, b) => {
+        const dateA = a.created_at
+          ? new Date(a.created_at).getTime()
+          : a.timestamp
+          ? new Date(a.timestamp).getTime()
+          : 0;
+        const dateB = b.created_at
+          ? new Date(b.created_at).getTime()
+          : b.timestamp
+          ? new Date(b.timestamp).getTime()
+          : 0;
+        return dateB - dateA;
+      });
+
+      // Buscar el primer mensaje que tenga metadata con agentId
+      for (const message of sortedMessages) {
+        if (message.metadata && message.metadata.agentId) {
+          const foundAgentId = message.metadata.agentId as string;
+          console.log("AgentId encontrado en mensaje:", foundAgentId);
+          setEffectiveAgentId(foundAgentId);
+          console.log("=== FIN getSessionAgentId ===");
+          return;
+        }
+      }
+
+      console.log("No se encontró agentId en los mensajes");
+    }
+
+    // Si no encontramos el agentId en los mensajes, intentar obtenerlo de la API
+    try {
+      console.log("Consultando API para obtener el agentId de la sesión...");
+      const response = await fetch(
+        `/api/chat/session-agent?sessionId=${sessionId}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.agentId) {
+          console.log("AgentId obtenido de la API:", data.agentId);
+          setEffectiveAgentId(data.agentId);
+          console.log("=== FIN getSessionAgentId ===");
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error al consultar la API:", error);
+    }
+
+    console.log(
+      "No se pudo obtener el agentId, se usará el agente preferido del usuario"
+    );
+    console.log("=== FIN getSessionAgentId ===");
+  }, [sessionId, urlAgentId, initialMessages]);
+
+  // Obtener agentId cuando se carga el componente
+  useEffect(() => {
+    if (!urlAgentId) {
+      getSessionAgentId();
+    }
+  }, [urlAgentId, getSessionAgentId]);
+
+  // Mostrar logs para depuración
+  useEffect(() => {
+    console.log("Estado actual del chat:");
+    console.log("- sessionId:", sessionId);
+    console.log("- urlAgentId:", urlAgentId);
+    console.log("- effectiveAgentId:", effectiveAgentId);
+    console.log("- initialMessages:", initialMessages.length);
+  }, [sessionId, urlAgentId, effectiveAgentId, initialMessages]);
+
   // Limpiar timeouts al desmontar el componente
   useEffect(() => {
     return () => {
@@ -103,8 +206,9 @@ export default function ChatSessionContainer({
 
   // Desplazarse al final cuando cambian los mensajes o el estado de carga
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, chatState]);
+    // Pequeño retraso para asegurar que todos los elementos se han renderizado
+    setTimeout(scrollToBottom, 100);
+  }, [messages, isTyping, chatState, showWelcomeCard]);
 
   // Función para hacer vibrar el dispositivo con un patrón más agradable
   const vibrate = (pattern: number[] = [50, 30, 80]) => {
@@ -115,14 +219,10 @@ export default function ChatSessionContainer({
 
   // Función para obtener los parámetros de la URL
   const getUrlParams = () => {
-    const params: Record<string, unknown> = {};
-
-    // Solo extraer el agentId de los parámetros de la URL
-    const agentId = searchParams.get("agentId");
-    if (agentId) {
-      params.agentId = agentId;
+    const params: Record<string, string> = {};
+    if (effectiveAgentId) {
+      params.agentId = effectiveAgentId;
     }
-
     return params;
   };
 
@@ -249,8 +349,26 @@ export default function ChatSessionContainer({
     }
   };
 
+  // Efecto para controlar la visibilidad de la tarjeta de bienvenida
+  useEffect(() => {
+    console.log("ChatSessionContainer - urlAgentId:", urlAgentId);
+    console.log("ChatSessionContainer - effectiveAgentId:", effectiveAgentId);
+    console.log("ChatSessionContainer - sessionId:", sessionId);
+    // Siempre mostrar la tarjeta de bienvenida
+    setShowWelcomeCard(true);
+  }, [urlAgentId, effectiveAgentId, sessionId]);
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-background to-background/80">
+      {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
+      {showWelcomeCard && (
+        <div className="sticky top-0 z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
+          <div className="container mx-auto max-w-3xl">
+            <AgentWelcomeCard agentId={effectiveAgentId} />
+          </div>
+        </div>
+      )}
+
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"

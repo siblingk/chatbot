@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
+import { AuthRefresh } from "@/components/auth/auth-refresh";
 
 import "@/app/globals.css";
 import { NextIntlClientProvider } from "next-intl";
@@ -36,6 +37,7 @@ export default async function AuthLayout({
     <div className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <NextIntlClientProvider locale={locale} messages={messages}>
         <AuthProvider>
+          <AuthRefresh />
           <main className="flex-1 mx-auto container">{children}</main>
         </AuthProvider>
       </NextIntlClientProvider>

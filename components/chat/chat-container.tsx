@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { generateUUID } from "@/utils/uuid";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
 
 interface ChatContainerProps {
   // Mantenemos la prop por compatibilidad, aunque no la usemos directamente
@@ -33,9 +34,15 @@ export default function ChatContainer({}: ChatContainerProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showWelcomeCard, setShowWelcomeCard] = useState(true);
 
   // Verificar si se redirigió desde una sesión de chat que no existe
   const noChat = searchParams.get("noChat") === "true";
+
+  // Extraer el agentId directamente de los parámetros de URL
+  const agentId = searchParams.get("agentId");
+
+  console.log("ChatContainer - agentId obtenido de URL:", agentId);
 
   // Verificar si el usuario está autenticado
   useEffect(() => {
@@ -86,6 +93,13 @@ export default function ChatContainer({}: ChatContainerProps) {
       urlParams[key] = value;
     }
   });
+
+  // Efecto para controlar la visibilidad de la tarjeta de bienvenida
+  useEffect(() => {
+    console.log("ChatContainer - agentId para tarjeta de bienvenida:", agentId);
+    // Siempre mostrar la tarjeta de bienvenida
+    setShowWelcomeCard(true);
+  }, [agentId]);
 
   // Función para desplazarse al final del chat
   const scrollToBottom = () => {
@@ -185,10 +199,19 @@ export default function ChatContainer({}: ChatContainerProps) {
           })}
         </div>
       )}
+
       <div
         className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-10rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
         ref={scrollRef}
       >
+        {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
+        {showWelcomeCard && (
+          <div className="z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
+            <div className="container mx-auto max-w-3xl">
+              <AgentWelcomeCard agentId={agentId || undefined} />
+            </div>
+          </div>
+        )}
         <div className="container max-w-3xl mx-auto space-y-6 pb-20">
           <AnimatePresence initial={false}>
             {messages.map((message) => (

@@ -55,7 +55,12 @@ export function MessageInput({
       const formData = new FormData();
       formData.append("message", message.trim());
       setIsSubmitting(true);
+
+      // Limpiar el input inmediatamente para mejor UX
       setMessage("");
+
+      // Enfocar el input inmediatamente
+      focusInput();
 
       try {
         // Usar un pequeño retraso para asegurar que la UI se actualice antes de enviar el mensaje

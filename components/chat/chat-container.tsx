@@ -101,8 +101,15 @@ export default function ChatContainer({}: ChatContainerProps) {
   // Función para desplazarse al final del chat
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      // Usar scrollTop directamente para evitar animaciones
+      // Usar scrollIntoView con behavior: "auto" para un desplazamiento inmediato
+      // y block: "end" para asegurar que el final sea visible
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+
+      // Usar un enfoque alternativo para asegurar que el scroll funcione en todos los navegadores
+      const lastChild = scrollRef.current.lastElementChild;
+      if (lastChild) {
+        lastChild.scrollIntoView({ behavior: "auto", block: "end" });
+      }
     }
   };
 
@@ -126,9 +133,29 @@ export default function ChatContainer({}: ChatContainerProps) {
     if (!scrollRef.current) return;
 
     // Crear un observador de mutaciones para detectar cambios en el DOM
-    const observer = new MutationObserver(() => {
-      // Cuando hay cambios en el DOM, desplazarse al final
-      scrollToBottom();
+    const observer = new MutationObserver((mutations) => {
+      // Verificar si las mutaciones afectan al contenido del chat
+      const shouldScroll = mutations.some((mutation) => {
+        // Si se añaden nodos, probablemente sea un nuevo mensaje
+        if (mutation.addedNodes.length > 0) return true;
+
+        // Si cambia el contenido de texto, probablemente sea un mensaje que se está escribiendo
+        if (mutation.type === "characterData") return true;
+
+        // Si cambian los atributos de un elemento, podría ser un cambio de estilo o clase
+        if (
+          mutation.type === "attributes" &&
+          (mutation.target as Element).classList.contains("message")
+        )
+          return true;
+
+        return false;
+      });
+
+      // Solo hacer scroll si las mutaciones son relevantes
+      if (shouldScroll) {
+        scrollToBottom();
+      }
     });
 
     // Configurar el observador para observar cambios en los hijos y el contenido
@@ -136,6 +163,8 @@ export default function ChatContainer({}: ChatContainerProps) {
       childList: true,
       subtree: true,
       characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
     });
 
     // Limpiar el observador cuando se desmonta el componente
@@ -172,8 +201,11 @@ export default function ChatContainer({}: ChatContainerProps) {
     setIsTyping(true);
 
     // Desplazarse al fondo inmediatamente después de mostrar el mensaje del usuario
-    // Usar setTimeout con 0ms para asegurar que el DOM se actualice antes de hacer scroll
+    // Usar múltiples intentos de scroll para asegurar que funcione
+    scrollToBottom();
     setTimeout(scrollToBottom, 0);
+    setTimeout(scrollToBottom, 100);
+    setTimeout(scrollToBottom, 300);
 
     try {
       // Pasar todos los parámetros de URL al enviar el mensaje
@@ -199,10 +231,12 @@ export default function ChatContainer({}: ChatContainerProps) {
         setMessages(messagesWithBot);
 
         // Desplazarse al fondo después de mostrar el mensaje del bot
-        // Usar setTimeout con 0ms para asegurar que el DOM se actualice antes de hacer scroll
+        // Usar múltiples intentos de scroll para asegurar que funcione
+        scrollToBottom();
         setTimeout(scrollToBottom, 0);
-        // Hacer un segundo scroll después de un breve retraso para asegurar que el contenido se haya renderizado completamente
         setTimeout(scrollToBottom, 100);
+        setTimeout(scrollToBottom, 300);
+        setTimeout(scrollToBottom, 500);
 
         // Solo redirigir a la página de chat si el usuario está autenticado
         if (isAuthenticated) {
@@ -254,17 +288,17 @@ export default function ChatContainer({}: ChatContainerProps) {
         ref={scrollRef}
       >
         {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
-        <div className="sticky top-0 z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
-          <div className="container mx-auto max-w-3xl">
-            <AgentWelcomeCard agentId={memoizedAgentId} />
-          </div>
+
+        <div className="container mx-auto max-w-3xl">
+          <AgentWelcomeCard agentId={memoizedAgentId} />
         </div>
+
         <div className="container max-w-3xl mx-auto space-y-6">
           {messages.map((message) => (
             <div
               key={message.id}
               className={cn(
-                "flex items-start gap-3 mb-6",
+                "flex items-start gap-3 mb-6 message",
                 message.isUser ? "justify-end" : "justify-start"
               )}
             >
@@ -338,8 +372,8 @@ export default function ChatContainer({}: ChatContainerProps) {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
-        <div className="container mx-auto max-w-3xl">
+      <div className="fixed bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
+        <div className="container px-2 mx-auto max-w-3xl pb-4">
           {!hasUserMessages ? (
             <div className="flex flex-col items-center px-4 mb-2 text-center">
               <Button

@@ -83,7 +83,7 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
       className="transition-opacity duration-200"
       style={{ minHeight: CARD_MIN_HEIGHT, opacity: isLoading ? 0.7 : 1 }}
     >
-      <Card className="mb-6 bg-sidebar p-0 border-none shadow-sm font-normal tracking-wide rounded-none h-full">
+      <Card className="mb-6 bg-sidebar text-center p-0 border-none shadow-sm font-normal tracking-wide rounded-none h-full">
         <CardHeader className="py-4">
           <CardTitle className="text-md flex items-center gap-2 text-primary">
             <Bot className="h-5 w-5 text-primary" />

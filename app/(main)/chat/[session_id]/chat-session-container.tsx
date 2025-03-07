@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+} from "react";
 import { MessageInput } from "@/components/chat/message-input";
 import { sendMessage, updateMessages } from "@/app/actions/chat";
 import { generateUUID } from "@/utils/uuid";
@@ -9,7 +16,6 @@ import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useTranslations } from "next-intl";
-import { motion, AnimatePresence } from "framer-motion";
 import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
 import { useSearchParams } from "next/navigation";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
@@ -37,7 +43,7 @@ interface ChatSessionContainerProps {
 }
 
 // Estados posibles del chat
-type ChatState = "idle" | "sending" | "processing" | "receiving" | "error";
+type ChatState = "idle" | "sending" | "error";
 
 export default function ChatSessionContainer({
   sessionId,
@@ -54,8 +60,8 @@ export default function ChatSessionContainer({
   const [effectiveAgentId, setEffectiveAgentId] = useState<string | undefined>(
     urlAgentId || undefined
   );
-  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [showWelcomeCard, setShowWelcomeCard] = useState(true);
+  // Referencia para evitar re-renderizados innecesarios
+  const messagesRef = useRef<Message[]>([]);
 
   // Convertir los mensajes del historial al formato que usa el chat
   useEffect(() => {
@@ -189,27 +195,56 @@ export default function ChatSessionContainer({
     console.log("- initialMessages:", initialMessages.length);
   }, [sessionId, urlAgentId, effectiveAgentId, initialMessages]);
 
-  // Limpiar timeouts al desmontar el componente
-  useEffect(() => {
-    return () => {
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
-    };
-  }, []);
-
   // Función para desplazarse al final del chat
   const scrollToBottom = () => {
     if (scrollRef.current) {
+      // Usar scrollTo con behavior: "instant" para un desplazamiento inmediato sin animación
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   };
 
   // Desplazarse al final cuando cambian los mensajes o el estado de carga
+  // Usar useLayoutEffect para que el scroll ocurra antes de la pintura del navegador
+  useLayoutEffect(() => {
+    scrollToBottom();
+    // Actualizar la referencia para evitar re-renderizados
+    messagesRef.current = messages;
+  }, [messages]);
+
+  // Efecto separado para isTyping para evitar re-renderizados innecesarios
+  useLayoutEffect(() => {
+    if (isTyping) {
+      scrollToBottom();
+    }
+  }, [isTyping]);
+
+  // Observador de mutaciones para detectar cambios en el contenido del chat
   useEffect(() => {
-    // Pequeño retraso para asegurar que todos los elementos se han renderizado
-    setTimeout(scrollToBottom, 100);
-  }, [messages, isTyping, chatState, showWelcomeCard]);
+    if (!scrollRef.current) return;
+
+    // Crear un observador de mutaciones para detectar cambios en el DOM
+    const observer = new MutationObserver(() => {
+      // Cuando hay cambios en el DOM, desplazarse al final
+      scrollToBottom();
+    });
+
+    // Configurar el observador para observar cambios en los hijos y el contenido
+    observer.observe(scrollRef.current, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    // Limpiar el observador cuando se desmonta el componente
+    return () => observer.disconnect();
+  }, []);
+
+  // Asegurarse de que el scroll funcione cuando la ventana cambia de tamaño
+  useEffect(() => {
+    const handleResize = () => scrollToBottom();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Función para hacer vibrar el dispositivo con un patrón más agradable
   const vibrate = (pattern: number[] = [50, 30, 80]) => {
@@ -251,87 +286,70 @@ export default function ChatSessionContainer({
     setMessages((prevMessages) => [...prevMessages, newMessage]);
 
     // Desplazarse al fondo inmediatamente después de mostrar el mensaje del usuario
+    // Usar setTimeout con 0ms para asegurar que el DOM se actualice antes de hacer scroll
     setTimeout(scrollToBottom, 0);
 
-    // Mostrar el indicador de carga y cambiar el estado a "processing"
+    // Mostrar el indicador de carga
     setIsTyping(true);
-    setChatState("processing");
-
-    // Configurar un timeout para cambiar a "receiving" después de un segundo
-    if (processingTimeoutRef.current) {
-      clearTimeout(processingTimeoutRef.current);
-    }
-
-    processingTimeoutRef.current = setTimeout(() => {
-      setChatState("receiving");
-      // Vibración suave cuando cambia a "receiving"
-      vibrate([20, 10, 20]);
-    }, 1000);
 
     // Obtener los parámetros de la URL
     const urlParams = getUrlParams();
 
-    // Enviar el mensaje al servidor en un proceso separado
-    // No esperamos a que termine para continuar con la UI
-    setTimeout(async () => {
-      try {
-        // Enviar el mensaje al servidor con los parámetros de la URL
-        const response = await sendMessage(
-          sessionId,
-          messageText,
-          undefined,
-          urlParams
-        );
+    // Enviar el mensaje al servidor
+    try {
+      // Enviar el mensaje al servidor con los parámetros de la URL
+      const response = await sendMessage(
+        sessionId,
+        messageText,
+        undefined,
+        urlParams
+      );
 
-        if (response.success) {
-          // Vibrar con un patrón más pronunciado al recibir respuesta
-          vibrate([50, 30, 100]);
+      if (response.success) {
+        // Vibrar con un patrón más pronunciado al recibir respuesta
+        vibrate([50, 30, 100]);
 
-          // Crear el mensaje del bot
-          const botMessage: Message = {
-            id: generateUUID(),
-            text: response.message,
-            isUser: false,
-            timestamp: new Date(),
-            session_id: sessionId,
-            input: "",
-          };
+        // Crear el mensaje del bot
+        const botMessage: Message = {
+          id: generateUUID(),
+          text: response.message,
+          isUser: false,
+          timestamp: new Date(),
+          session_id: sessionId,
+          input: "",
+        };
 
-          // Ocultar el indicador de carga, mostrar el mensaje del bot y volver al estado "idle"
-          setIsTyping(false);
-          setChatState("idle");
+        // Ocultar el indicador de carga, mostrar el mensaje del bot y volver al estado "idle"
+        setIsTyping(false);
+        setChatState("idle");
 
-          // Actualizar el estado de los mensajes con el mensaje del bot
-          setMessages((prevMessages) => [...prevMessages, botMessage]);
+        // Actualizar el estado de los mensajes con el mensaje del bot
+        setMessages((prevMessages) => [...prevMessages, botMessage]);
 
-          // Desplazarse al fondo después de mostrar el mensaje del bot
-          setTimeout(scrollToBottom, 0);
+        // Desplazarse al fondo después de mostrar el mensaje del bot
+        // Usar setTimeout con 0ms para asegurar que el DOM se actualice antes de hacer scroll
+        setTimeout(scrollToBottom, 0);
+        // Hacer un segundo scroll después de un breve retraso para asegurar que el contenido se haya renderizado completamente
+        setTimeout(scrollToBottom, 100);
 
-          // Actualizar la base de datos con todos los mensajes
-          // Usamos el estado actual para asegurarnos de tener todos los mensajes
-          updateMessages([...messages, newMessage, botMessage]);
-        } else {
-          // Si hay un error en la respuesta, vibrar con un patrón de error
-          vibrate([100, 50, 100, 50, 100]);
-          setIsTyping(false);
-          setChatState("error");
-          setErrorMessage(response.message || t("error"));
-        }
-      } catch (error) {
-        console.error("Error al enviar el mensaje:", error);
-        // Vibrar con un patrón de error
+        // Actualizar la base de datos con todos los mensajes
+        // Usamos el estado actual para asegurarnos de tener todos los mensajes
+        updateMessages([...messages, newMessage, botMessage]);
+      } else {
+        // Si hay un error en la respuesta, vibrar con un patrón de error
         vibrate([100, 50, 100, 50, 100]);
         setIsTyping(false);
         setChatState("error");
-        setErrorMessage(t("errorMessage"));
-      } finally {
-        // Limpiar el timeout si existe
-        if (processingTimeoutRef.current) {
-          clearTimeout(processingTimeoutRef.current);
-          processingTimeoutRef.current = null;
-        }
+        setErrorMessage(response.message || t("error"));
       }
-    }, 0);
+    } catch (error) {
+      console.error("Error al enviar el mensaje:", error);
+      // Vibrar con un patrón de error
+      vibrate([100, 50, 100, 50, 100]);
+      setIsTyping(false);
+      setChatState("error");
+      setErrorMessage(t("errorMessage"));
+    }
   };
 
   // Función para obtener el texto del estado actual
@@ -339,10 +357,6 @@ export default function ChatSessionContainer({
     switch (chatState) {
       case "sending":
         return t("sending");
-      case "processing":
-        return t("processing");
-      case "receiving":
-        return t("receiving");
       case "error":
         return errorMessage || t("error");
       default:
@@ -352,163 +366,118 @@ export default function ChatSessionContainer({
 
   // Efecto para controlar la visibilidad de la tarjeta de bienvenida
   useEffect(() => {
-    console.log("ChatSessionContainer - urlAgentId:", urlAgentId);
-    console.log("ChatSessionContainer - effectiveAgentId:", effectiveAgentId);
     console.log("ChatSessionContainer - sessionId:", sessionId);
-    // Siempre mostrar la tarjeta de bienvenida
-    setShowWelcomeCard(true);
-  }, [urlAgentId, effectiveAgentId, sessionId]);
+  }, [sessionId]);
+
+  // Memoizar el agentId para evitar re-renderizados innecesarios
+  const memoizedAgentId = useMemo(() => effectiveAgentId, [effectiveAgentId]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
       <div
-        className="flex-1 overflow-y-auto p-4 pb-32 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
+        className="flex-1 overflow-y-auto p-4 pb-24 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
         ref={scrollRef}
       >
         {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
-        {showWelcomeCard && (
-          <div className="z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
-            <div className="container mx-auto max-w-3xl">
-              <AgentWelcomeCard agentId={effectiveAgentId} />
-            </div>
+        <div className="sticky top-0 z-10 px-4 pt-4 pb-2 bg-background/80 backdrop-blur-sm">
+          <div className="container mx-auto max-w-3xl">
+            <AgentWelcomeCard agentId={memoizedAgentId} />
           </div>
-        )}
+        </div>
 
         <div className="container max-w-3xl mx-auto space-y-6">
-          <AnimatePresence initial={false}>
-            {messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.2,
-                  ease: "easeOut",
-                }}
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={cn(
+                "flex items-start gap-3 mb-6",
+                message.isUser ? "justify-end" : "justify-start"
+              )}
+            >
+              <div
                 className={cn(
-                  "flex items-start gap-3 mb-6",
-                  message.isUser ? "justify-end" : "justify-start"
+                  "flex items-center justify-center w-7 h-7 rounded-full shrink-0",
+                  message.isUser
+                    ? "order-last bg-primary/90"
+                    : "bg-muted-foreground/20"
                 )}
               >
+                {message.isUser ? (
+                  <User className="w-3.5 h-3.5 text-primary-foreground" />
+                ) : (
+                  <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </div>
+              <div className="space-y-1 max-w-[85%]">
                 <div
                   className={cn(
-                    "flex items-center justify-center w-7 h-7 rounded-full shrink-0",
+                    "px-4 py-2.5 rounded-2xl text-sm",
                     message.isUser
-                      ? "order-last bg-primary/90"
-                      : "bg-muted-foreground/20"
+                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                      : "bg-muted rounded-tl-none"
                   )}
                 >
                   {message.isUser ? (
-                    <User className="w-3.5 h-3.5 text-primary-foreground" />
+                    message.text
                   ) : (
-                    <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                    <MarkdownRenderer
+                      content={message.text}
+                      className={
+                        message.isUser ? "text-primary-foreground" : ""
+                      }
+                    />
                   )}
                 </div>
-                <div className="space-y-1 max-w-[85%]">
-                  <div
-                    className={cn(
-                      "px-4 py-2.5 rounded-2xl text-sm",
-                      message.isUser
-                        ? "bg-primary text-primary-foreground rounded-tr-none"
-                        : "bg-muted rounded-tl-none"
-                    )}
-                  >
-                    {message.isUser ? (
-                      message.text
-                    ) : (
-                      <MarkdownRenderer
-                        content={message.text}
-                        className={
-                          message.isUser ? "text-primary-foreground" : ""
-                        }
-                      />
-                    )}
-                  </div>
-                  <div className="text-[10px] opacity-60 px-2">
-                    {new Date(message.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
+                <div className="text-[10px] opacity-60 px-2">
+                  {new Date(message.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              </div>
+            </div>
+          ))}
 
-          {/* Indicador de escritura */}
-          <AnimatePresence>
-            {isTyping && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-start gap-3 max-w-[80%] mr-auto"
-              >
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0">
-                  <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+          {/* Indicador de escritura sin animaciones */}
+          {isTyping && (
+            <div className="flex items-start gap-3 max-w-[80%] mr-auto">
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0">
+                <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <div className="px-4 py-3 bg-muted rounded-2xl rounded-tl-none">
+                <div className="flex items-center space-x-1.5">
+                  <div
+                    className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <div
+                    className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                    style={{ animationDelay: "200ms" }}
+                  />
+                  <div
+                    className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                    style={{ animationDelay: "400ms" }}
+                  />
                 </div>
-                <div className="px-4 py-3 bg-muted rounded-2xl rounded-tl-none">
-                  <div className="flex items-center space-x-1.5">
-                    <motion.div
-                      animate={{ y: [0, -3, 0] }}
-                      transition={{ repeat: Infinity, duration: 1, delay: 0 }}
-                      className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full"
-                    />
-                    <motion.div
-                      animate={{ y: [0, -3, 0] }}
-                      transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                      className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full"
-                    />
-                    <motion.div
-                      animate={{ y: [0, -3, 0] }}
-                      transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                      className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Estado del chat */}
-      <AnimatePresence mode="wait">
-        {chatState !== "idle" && chatState !== "sending" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="px-4 py-1.5 text-xs text-center text-muted-foreground/70 bg-muted/30"
-          >
-            {getStateText()}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Estado del chat - solo mostrar errores sin animaciones */}
+      {chatState === "error" && (
+        <div className="px-4 py-1.5 text-xs text-center text-destructive bg-destructive/10">
+          {getStateText()}
+        </div>
+      )}
 
-      {/* Mensaje de error */}
-      <AnimatePresence>
-        {errorMessage && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="px-4 py-2 text-xs text-center text-destructive bg-destructive/10"
-          >
-            {errorMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="absolute bottom-0 left-0 right-0 z-10">
+      <div className="fixed bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
         <div className="container px-2 mx-auto max-w-3xl pb-4">
           <MessageInput
             onSubmit={handleSubmit}
             disabled={chatState === "error"}
-            className="bg-gradient-to-t from-background to-transparent pt-6"
+            className="pt-2"
           />
         </div>
       </div>

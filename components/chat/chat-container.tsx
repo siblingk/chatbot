@@ -20,6 +20,7 @@ import { generateUUID } from "@/utils/uuid";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface ChatContainerProps {
   // Mantenemos la prop por compatibilidad, aunque no la usemos directamente
@@ -251,7 +252,16 @@ export default function ChatContainer({}: ChatContainerProps) {
                         : "bg-muted rounded-tl-none"
                     )}
                   >
-                    {message.text}
+                    {message.isUser ? (
+                      message.text
+                    ) : (
+                      <MarkdownRenderer
+                        content={message.text}
+                        className={
+                          message.isUser ? "text-primary-foreground" : ""
+                        }
+                      />
+                    )}
                   </div>
                   <div className="text-[10px] opacity-60 px-2">
                     {new Date(message.timestamp).toLocaleTimeString([], {

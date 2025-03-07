@@ -12,6 +12,7 @@ import { Send, Bot, User, RefreshCw, AlertCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUserRole } from "@/hooks/useUserRole";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface AgentChatPreviewProps {
   agent: Partial<Agent>;
@@ -570,9 +571,18 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
                     }`}
                     title={message.timestamp.toLocaleString()}
                   >
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.text}
-                    </p>
+                    {message.isUser ? (
+                      <p className="whitespace-pre-wrap break-words">
+                        {message.text}
+                      </p>
+                    ) : (
+                      <MarkdownRenderer
+                        content={message.text}
+                        className={
+                          message.isUser ? "text-primary-foreground" : ""
+                        }
+                      />
+                    )}
                     <span className="absolute bottom-1 right-2 text-[10px] opacity-0 group-hover:opacity-70 transition-opacity">
                       {message.timestamp.toLocaleTimeString([], {
                         hour: "2-digit",

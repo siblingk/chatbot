@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { WelcomeMessage } from "@/components/chat/welcome-message";
 import { useTranslations } from "next-intl";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface MessageListProps {
   messages: Message[];
@@ -142,9 +143,16 @@ export function MessageList({
                     : "bg-muted"
                 )}
               >
-                <p className="whitespace-pre-wrap break-words">
-                  {message.text}
-                </p>
+                {message.isUser ? (
+                  <p className="whitespace-pre-wrap break-words">
+                    {message.text}
+                  </p>
+                ) : (
+                  <MarkdownRenderer
+                    content={message.text}
+                    className={message.isUser ? "text-primary-foreground" : ""}
+                  />
+                )}
               </motion.div>
             </motion.div>
           ))}

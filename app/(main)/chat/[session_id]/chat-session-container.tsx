@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
 import { useSearchParams } from "next/navigation";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 // Interfaz para los mensajes que vienen de la base de datos
 interface ChatMessage {
@@ -412,7 +413,16 @@ export default function ChatSessionContainer({
                         : "bg-muted rounded-tl-none"
                     )}
                   >
-                    {message.text}
+                    {message.isUser ? (
+                      message.text
+                    ) : (
+                      <MarkdownRenderer
+                        content={message.text}
+                        className={
+                          message.isUser ? "text-primary-foreground" : ""
+                        }
+                      />
+                    )}
                   </div>
                   <div className="text-[10px] opacity-60 px-2">
                     {new Date(message.timestamp).toLocaleTimeString([], {

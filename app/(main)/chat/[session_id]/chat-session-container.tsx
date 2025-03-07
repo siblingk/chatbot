@@ -198,14 +198,30 @@ export default function ChatSessionContainer({
   // Función para desplazarse al final del chat
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      // Usar scrollIntoView con behavior: "auto" para un desplazamiento inmediato
-      // y block: "end" para asegurar que el final sea visible
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      try {
+        // Método 1: Establecer scrollTop directamente
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
 
-      // Usar un enfoque alternativo para asegurar que el scroll funcione en todos los navegadores
-      const lastChild = scrollRef.current.lastElementChild;
-      if (lastChild) {
-        lastChild.scrollIntoView({ behavior: "auto", block: "end" });
+        // Método 2: Usar scrollTo con behavior: "instant"
+        scrollRef.current.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: "instant" as ScrollBehavior,
+        });
+
+        // Método 3: Usar un enfoque alternativo con scrollIntoView
+        const lastChild = scrollRef.current.lastElementChild;
+        if (lastChild) {
+          lastChild.scrollIntoView({ behavior: "auto", block: "end" });
+        }
+
+        // Forzar un reflow para asegurar que el scroll se aplique correctamente
+        void scrollRef.current.offsetHeight;
+      } catch (error) {
+        console.error("Error al hacer scroll:", error);
+        // Fallback simple si algo falla
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
       }
     }
   };
@@ -214,14 +230,38 @@ export default function ChatSessionContainer({
   // Usar useLayoutEffect para que el scroll ocurra antes de la pintura del navegador
   useLayoutEffect(() => {
     scrollToBottom();
+    // Programar múltiples intentos de scroll para asegurar que funcione
+    const scrollTimers = [
+      setTimeout(scrollToBottom, 0),
+      setTimeout(scrollToBottom, 50),
+      setTimeout(scrollToBottom, 100),
+      setTimeout(scrollToBottom, 200),
+    ];
     // Actualizar la referencia para evitar re-renderizados
     messagesRef.current = messages;
+
+    // Limpiar los timers cuando se desmonte el componente
+    return () => {
+      scrollTimers.forEach(clearTimeout);
+    };
   }, [messages]);
 
   // Efecto separado para isTyping para evitar re-renderizados innecesarios
   useLayoutEffect(() => {
     if (isTyping) {
       scrollToBottom();
+      // Programar múltiples intentos de scroll para asegurar que funcione
+      const scrollTimers = [
+        setTimeout(scrollToBottom, 0),
+        setTimeout(scrollToBottom, 50),
+        setTimeout(scrollToBottom, 100),
+        setTimeout(scrollToBottom, 200),
+      ];
+
+      // Limpiar los timers cuando se desmonte el componente
+      return () => {
+        scrollTimers.forEach(clearTimeout);
+      };
     }
   }, [isTyping]);
 
@@ -252,6 +292,8 @@ export default function ChatSessionContainer({
       // Solo hacer scroll si las mutaciones son relevantes
       if (shouldScroll) {
         scrollToBottom();
+        // Intentar nuevamente después de un breve retraso para asegurar que el contenido se haya renderizado completamente
+        setTimeout(scrollToBottom, 50);
       }
     });
 
@@ -270,7 +312,11 @@ export default function ChatSessionContainer({
 
   // Asegurarse de que el scroll funcione cuando la ventana cambia de tamaño
   useEffect(() => {
-    const handleResize = () => scrollToBottom();
+    const handleResize = () => {
+      scrollToBottom();
+      // Intentar nuevamente después de un breve retraso para asegurar que el contenido se haya reajustado
+      setTimeout(scrollToBottom, 100);
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -318,7 +364,9 @@ export default function ChatSessionContainer({
     // Usar múltiples intentos de scroll para asegurar que funcione
     scrollToBottom();
     setTimeout(scrollToBottom, 0);
+    setTimeout(scrollToBottom, 50);
     setTimeout(scrollToBottom, 100);
+    setTimeout(scrollToBottom, 200);
     setTimeout(scrollToBottom, 300);
 
     // Mostrar el indicador de carga
@@ -362,7 +410,9 @@ export default function ChatSessionContainer({
         // Usar múltiples intentos de scroll para asegurar que funcione
         scrollToBottom();
         setTimeout(scrollToBottom, 0);
+        setTimeout(scrollToBottom, 50);
         setTimeout(scrollToBottom, 100);
+        setTimeout(scrollToBottom, 200);
         setTimeout(scrollToBottom, 300);
         setTimeout(scrollToBottom, 500);
 
@@ -407,9 +457,9 @@ export default function ChatSessionContainer({
   const memoizedAgentId = useMemo(() => effectiveAgentId, [effectiveAgentId]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden relative">
+    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative">
       <div
-        className="flex-1 overflow-y-auto p-4 pb-24 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent"
+        className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent pb-24"
         ref={scrollRef}
       >
         {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
@@ -471,9 +521,9 @@ export default function ChatSessionContainer({
             </div>
           ))}
 
-          {/* Indicador de escritura sin animaciones */}
+          {/* Indicador de escritura */}
           {isTyping && (
-            <div className="flex items-start gap-3 max-w-[80%] mr-auto">
+            <div className="flex items-start gap-3 mb-6 mr-auto">
               <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0">
                 <Bot className="w-3.5 h-3.5 text-muted-foreground" />
               </div>

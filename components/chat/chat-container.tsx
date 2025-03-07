@@ -372,7 +372,7 @@ export default function ChatContainer({}: ChatContainerProps) {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
         <div className="container px-2 mx-auto max-w-3xl pb-4">
           {!hasUserMessages ? (
             <div className="flex flex-col items-center px-4 mb-2 text-center">

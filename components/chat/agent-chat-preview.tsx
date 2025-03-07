@@ -332,7 +332,7 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
     // Mensaje predefinido del usuario
     const userMessage: Message = {
       id: generateUUID(),
-      text: "Hola, necesito un presupuesto para reparar mi coche",
+      text: tSettings("simulationMessage"),
       isUser: true,
       timestamp: new Date(),
       session_id: sessionId,
@@ -387,7 +387,7 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
       );
       const response = await sendMessage(
         sessionId,
-        "Hola, necesito un presupuesto para reparar mi coche",
+        tSettings("simulationMessage"),
         agentPrompt,
         updatedUrlParams
       );
@@ -515,7 +515,7 @@ export default function AgentChatPreview({ agent }: AgentChatPreviewProps) {
   };
 
   return (
-    <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card">
+    <div className="flex flex-col h-fit border rounded-lg overflow-hidden bg-card">
       <div className="bg-muted p-4 border-b flex justify-between items-center">
         <h3 className="font-medium">{tSettings("chatPreview")}</h3>
         <Button

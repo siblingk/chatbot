@@ -225,6 +225,7 @@
     "aiAutoResponseDescription": "Enable AI to automatically respond to customer inquiries",
     "chatPreview": "Chat Preview",
     "simulateConversation": "Simulate Conversation",
+    "simulationMessage": "Hello, I need a quote to repair my car",
     "notAuthenticated": "You are not authenticated",
     "agentNotFound": "Agent not found",
     "systemInstructions": "System Instructions",
@@ -246,7 +247,10 @@
     "urlCopied": "URL copied to clipboard!",
     "agentNotActive": "The selected agent is currently not active.",
     "resetConversation": "Reset Conversation",
-    "goBack": "Go Back"
+    "goBack": "Go Back",
+    "moreSettings": "More Settings",
+    "lessSettings": "Less Settings",
+    "additionalSettings": "Additional Settings"
   },
   "users": {
     "title": "User Management",

@@ -34,6 +34,9 @@ import {
   Shield,
   Sparkles,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  Settings,
 } from "lucide-react";
 import AgentChatPreview from "@/components/chat/agent-chat-preview";
 import { PreviewUrlGenerator } from "@/components/settings/preview-url-generator";
@@ -55,94 +58,82 @@ export default function EditAgentPage() {
   const { isAdmin } = useUserRole();
   const t = useTranslations();
 
-  const [agent, setAgent] = useState<Agent | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Inicializar con un agente por defecto para evitar estados de carga
+  const [agent, setAgent] = useState<Agent>({
+    id: params.agentId as string,
+    name: "",
+    model: "quote-builder-ai",
+    visibility: "private",
+    personality_tone: "Friendly",
+    lead_strategy: "Smart-Targeting",
+    welcome_message: "Welcome to AutoFix! How can we assist you today?",
+    pre_quote_message: "Your repair estimate is between $x, $y",
+    pre_quote_type: "Standard",
+    expiration_time: "24 Hours",
+    system_instructions: "",
+    auto_assign_leads: true,
+    auto_respond: true,
+    is_active: true,
+    target_role: "both",
+    target_agent_id: undefined,
+    user_id: user?.id || "",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMoreSettings, setShowMoreSettings] = useState(false);
 
   useEffect(() => {
     const fetchAgent = async () => {
-      setLoading(true);
-      try {
-        console.log("=== INICIO fetchAgent en EditAgentPage ===");
-        console.log("Intentando obtener agente con ID:", params.agentId);
-        console.log("Usuario es admin:", isAdmin);
-        console.log("Usuario ID:", user?.id);
+      if (!user) return;
 
-        // Usar getAgentById para todos los usuarios
-        // El parámetro true indica que se debe ignorar el estado de activación
-        console.log("Llamando a getAgentById con ignoreActiveStatus=true");
+      try {
+        // Obtener el agente sin mostrar estado de carga
         const currentAgent = await getAgentById(params.agentId as string, true);
 
-        console.log(
-          "Respuesta de getAgentById:",
-          currentAgent ? "Agente encontrado" : "Agente no encontrado"
-        );
-
-        if (!currentAgent) {
-          console.error(
-            "No se pudo encontrar el agente con ID:",
-            params.agentId
-          );
-
-          // Si no se encuentra el agente, intentar una solución alternativa
-          console.log("Intentando solución alternativa con API...");
-
+        if (currentAgent) {
+          setAgent(currentAgent);
+        } else {
           // Intentar obtener el agente directamente desde la API
           try {
             const response = await fetch(`/api/agents/${params.agentId}`);
             if (response.ok) {
               const directAgent = await response.json();
-
               if (directAgent && directAgent.id) {
-                console.log(
-                  "Agente obtenido directamente desde API:",
-                  directAgent
-                );
                 setAgent(directAgent);
-                setLoading(false);
-                return;
+              } else {
+                toast.error(t("settings.agentNotFound"));
               }
-            } else {
-              console.log("API respondió con error:", response.status);
-              const errorData = await response.json();
-              console.log("Detalles del error:", errorData);
             }
           } catch (directError) {
             console.error("Error al obtener el agente desde API:", directError);
+            toast.error(t("settings.errorLoading"));
           }
-
-          setError(t("settings.agentNotFound"));
-          setLoading(false);
-          return;
         }
-
-        console.log("Agente encontrado:", currentAgent);
-        setAgent(currentAgent);
       } catch (err) {
         console.error("Error al cargar el agente:", err);
-        setError(t("settings.errorLoading"));
-      } finally {
-        setLoading(false);
+        toast.error(t("settings.errorLoading"));
       }
     };
 
-    if (user) {
-      fetchAgent();
-    }
+    fetchAgent();
   }, [params.agentId, t, user, isAdmin]);
 
   // Verificar si el usuario es administrador o si está accediendo a su propio agente
   useEffect(() => {
-    if (!isAdmin && user?.id !== params.userId) {
+    if (user && !isAdmin && user.id !== params.userId) {
       router.push("/");
     }
   }, [params.userId, user, isAdmin, router]);
 
   const handleUpdateAgent = async () => {
     try {
-      if (!agent) return;
+      if (!agent.name) {
+        toast.error(t("settings.errorUpdatingAgent"));
+        return;
+      }
 
       setIsSubmitting(true);
       await updateAgent(agent);
@@ -175,58 +166,7 @@ export default function EditAgentPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex items-center gap-2 mb-6 bg-card p-4 rounded-lg shadow-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Bot className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("settings.editAgent")}</h1>
-        </div>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !agent) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex items-center gap-2 mb-6 bg-card p-4 rounded-lg shadow-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Bot className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t("settings.editAgent")}</h1>
-        </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-destructive mb-4">
-              {error || t("settings.agentNotFound")}
-            </p>
-            <Button onClick={() => router.back()}>
-              {t("settings.goBack")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const renderAgentForm = () => (
+  const renderBasicSettings = () => (
     <div className="space-y-8">
       <Card>
         <CardHeader>
@@ -310,6 +250,55 @@ export default function EditAgentPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            {t("settings.systemInstructions")}
+          </CardTitle>
+          <CardDescription className="flex justify-between items-center">
+            <span>{t("settings.systemInstructionsDescription")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMoreSettings(!showMoreSettings)}
+              className="ml-2"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              {showMoreSettings
+                ? t("settings.lessSettings")
+                : t("settings.moreSettings")}
+              {showMoreSettings ? (
+                <ChevronUp className="h-4 w-4 ml-1" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-1" />
+              )}
+            </Button>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder={t("settings.systemInstructionsPlaceholder")}
+            value={agent.system_instructions}
+            onChange={(e) =>
+              setAgent({ ...agent, system_instructions: e.target.value })
+            }
+            className="min-h-[150px]"
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderMoreSettings = () => (
+    <div className="space-y-8 mt-8">
+      <div className="border-t pt-6 mb-4">
+        <h3 className="text-lg font-medium mb-4 flex items-center">
+          <Settings className="h-5 w-5 mr-2 text-primary" />
+          {t("settings.additionalSettings")}
+        </h3>
+      </div>
 
       <Card>
         <CardHeader>
@@ -463,28 +452,6 @@ export default function EditAgentPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            {t("settings.systemInstructions")}
-          </CardTitle>
-          <CardDescription>
-            {t("settings.systemInstructionsDescription")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder={t("settings.systemInstructionsPlaceholder")}
-            value={agent.system_instructions}
-            onChange={(e) =>
-              setAgent({ ...agent, system_instructions: e.target.value })
-            }
-            className="min-h-[150px]"
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
             {t("settings.workflowAutomation")}
           </CardTitle>
           <CardDescription>
@@ -578,7 +545,8 @@ export default function EditAgentPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
-          {renderAgentForm()}
+          {renderBasicSettings()}
+          {showMoreSettings && renderMoreSettings()}
           <div className="flex justify-between pt-6 mt-6 border-t">
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => router.back()}>
@@ -603,9 +571,8 @@ export default function EditAgentPage() {
             </Button>
           </div>
         </div>
-        <div className="hidden border rounded-lg lg:block h-[calc(100vh-200px)] sticky top-8">
-          {agent && <AgentChatPreview agent={agent} />}
-
+        <div className="hidden lg:block h-[calc(100vh-200px)] sticky top-8">
+          <AgentChatPreview agent={agent} />
           <PreviewUrlGenerator agentId={agent?.id} agentConfig={agent} />
         </div>
       </div>

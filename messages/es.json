@@ -225,6 +225,7 @@
     "aiAutoResponseDescription": "Habilitar a la IA para responder automáticamente a consultas de clientes",
     "chatPreview": "Vista previa del chat",
     "simulateConversation": "Simular conversación",
+    "simulationMessage": "Hola, necesito un presupuesto para reparar mi coche",
     "notAuthenticated": "No estás autenticado",
     "agentNotFound": "Agente no encontrado",
     "systemInstructions": "Instrucciones del sistema",
@@ -246,7 +247,10 @@
     "urlCopied": "¡URL copiada al portapapeles!",
     "agentNotActive": "El agente seleccionado no está activo actualmente.",
     "resetConversation": "Reiniciar conversación",
-    "goBack": "Regresar"
+    "goBack": "Regresar",
+    "moreSettings": "Más Ajustes",
+    "lessSettings": "Menos Ajustes",
+    "additionalSettings": "Ajustes Adicionales"
   },
   "users": {
     "title": "Gestión de usuarios",

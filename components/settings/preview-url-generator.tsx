@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, ExternalLink } from "lucide-react";
@@ -22,6 +23,7 @@ export function PreviewUrlGenerator({
   agentId,
   agentConfig,
 }: PreviewUrlGeneratorProps) {
+  const t = useTranslations("settings");
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
 
@@ -58,10 +60,8 @@ export function PreviewUrlGenerator({
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle>URL con Configuración</CardTitle>
-        <CardDescription>
-          Genera una URL para usar este agente en el chat
-        </CardDescription>
+        <CardTitle>{t("previewUrlWithConfig")}</CardTitle>
+        <CardDescription>{t("previewUrlDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button
@@ -69,7 +69,7 @@ export function PreviewUrlGenerator({
           variant="outline"
           className="w-full"
         >
-          Generar URL del Chat
+          {t("generateChatUrl")}
         </Button>
 
         {previewUrl && (
@@ -80,7 +80,7 @@ export function PreviewUrlGenerator({
                 variant="outline"
                 size="icon"
                 onClick={copyToClipboard}
-                title="Copiar URL"
+                title={t("copyUrl")}
               >
                 <Copy className="h-4 w-4" />
               </Button>
@@ -88,7 +88,7 @@ export function PreviewUrlGenerator({
                 variant="outline"
                 size="icon"
                 asChild
-                title="Abrir en nueva pestaña"
+                title={t("openInNewTab")}
               >
                 <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4" />
@@ -96,9 +96,7 @@ export function PreviewUrlGenerator({
               </Button>
             </div>
             {copied && (
-              <p className="text-sm text-green-600">
-                ¡URL copiada al portapapeles!
-              </p>
+              <p className="text-sm text-green-600">{t("urlCopied")}</p>
             )}
           </div>
         )}

@@ -21,6 +21,9 @@ import {
   Shield,
   Clock,
   MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +73,7 @@ export default function CreateAgentPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMoreSettings, setShowMoreSettings] = useState(false);
 
   const handleCreateAgent = async () => {
     try {
@@ -97,7 +101,7 @@ export default function CreateAgentPage() {
     }
   };
 
-  const renderAgentForm = () => (
+  const renderBasicSettings = () => (
     <div className="space-y-8">
       <Card>
         <CardHeader>
@@ -183,6 +187,55 @@ export default function CreateAgentPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            {t("settings.systemInstructions")}
+          </CardTitle>
+          <CardDescription className="flex justify-between items-center">
+            <span>{t("settings.systemInstructionsDescription")}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMoreSettings(!showMoreSettings)}
+              className="ml-2"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              {showMoreSettings
+                ? t("settings.lessSettings")
+                : t("settings.moreSettings")}
+              {showMoreSettings ? (
+                <ChevronUp className="h-4 w-4 ml-1" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-1" />
+              )}
+            </Button>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder={t("settings.systemInstructionsPlaceholder")}
+            value={newAgent.system_instructions || ""}
+            onChange={(e) =>
+              setNewAgent({ ...newAgent, system_instructions: e.target.value })
+            }
+            className="min-h-[150px]"
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderMoreSettings = () => (
+    <div className="space-y-8 mt-8">
+      <div className="border-t pt-6 mb-4">
+        <h3 className="text-lg font-medium mb-4 flex items-center">
+          <Settings className="h-5 w-5 mr-2 text-primary" />
+          {t("settings.additionalSettings")}
+        </h3>
+      </div>
 
       <Card>
         <CardHeader>
@@ -340,28 +393,6 @@ export default function CreateAgentPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            {t("settings.systemInstructions")}
-          </CardTitle>
-          <CardDescription>
-            {t("settings.systemInstructionsDescription")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder={t("settings.systemInstructionsPlaceholder")}
-            value={newAgent.system_instructions || ""}
-            onChange={(e) =>
-              setNewAgent({ ...newAgent, system_instructions: e.target.value })
-            }
-            className="min-h-[150px]"
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
             {t("settings.workflowAutomation")}
           </CardTitle>
           <CardDescription>
@@ -455,7 +486,8 @@ export default function CreateAgentPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
-          {renderAgentForm()}
+          {renderBasicSettings()}
+          {showMoreSettings && renderMoreSettings()}
           <div className="flex justify-between pt-6 mt-6 border-t">
             <Button variant="outline" onClick={() => router.back()}>
               {t("settings.cancel")}

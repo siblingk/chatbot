@@ -5,15 +5,15 @@ import { redirect } from "next/navigation";
 import SharedChatContainer from "@/components/chat/chat-container";
 
 interface SessionChatPageProps {
-  params: {
+  params: Promise<{
     session_id: string;
-  };
+  }>;
 }
 
 export default async function SessionChatPage({
   params,
 }: SessionChatPageProps) {
-  const { session_id } = params;
+  const { session_id } = await params;
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 

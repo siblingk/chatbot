@@ -6,7 +6,6 @@ import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useSearchParams } from "next/navigation";
 import { getUserPreferredAgent } from "@/app/actions/agents";
 import { useTranslations } from "next-intl";
-import { useUserRole } from "@/hooks/useUserRole";
 
 interface AgentWelcomeCardProps {
   agentId?: string;
@@ -25,7 +24,6 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
   const [isLoading, setIsLoading] = useState(true);
   const searchParams = useSearchParams();
   const urlAgentId = searchParams.get("agentId") || undefined;
-  const { isShop } = useUserRole();
 
   // Memoizar el ID efectivo del agente para evitar cálculos innecesarios
   const effectiveAgentId = useMemo(
@@ -59,7 +57,7 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
     } finally {
       setIsLoading(false);
     }
-  }, [effectiveAgentId, isShop, t]);
+  }, [effectiveAgentId, t]);
 
   // Efecto para cargar la información del agente solo cuando cambian las dependencias clave
   useEffect(() => {

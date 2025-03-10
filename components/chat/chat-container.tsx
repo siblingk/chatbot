@@ -211,6 +211,7 @@ export default function SharedChatContainer({
   // Obtener agentId cuando se carga el componente
   useEffect(() => {
     getSessionAgentId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propSessionId, propAgentId]);
 
   // Función para desplazarse al final del chat

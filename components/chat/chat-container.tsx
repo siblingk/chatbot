@@ -1,47 +1,78 @@
 "use client";
 
-import { MessageInput } from "./message-input";
+import { MessageInput } from "@/components/chat/message-input";
 import { Message } from "@/types/chat";
 import { Bot, User } from "lucide-react";
-
 import {
   sendMessage,
   updateMessages,
   createNewSessionId,
   getCurrentUser,
 } from "@/app/actions/chat";
-import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
-import { useChat } from "@/contexts/chat-context";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useTransition,
+} from "react";
 import { useTranslations } from "next-intl";
-import { useSearchParams, useRouter } from "next/navigation";
-
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { generateUUID } from "@/utils/uuid";
 import { cn } from "@/lib/utils";
 import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
-interface ChatContainerProps {
-  // Mantenemos la prop por compatibilidad, aunque no la usemos directamente
-  workshopId?: string;
+interface ChatMessage {
+  id: string;
+  content?: string;
+  role?: string;
+  created_at?: string;
+  session_id?: string;
+  input?: string;
+  output?: string;
+  timestamp?: string;
+  user_id?: string;
+  metadata?: {
+    agentId?: string;
+    [key: string]: string | number | boolean | null | undefined;
+  };
 }
 
-export default function ChatContainer({}: ChatContainerProps) {
+interface SharedChatContainerProps {
+  sessionId?: string;
+  initialMessages: Message[] | ChatMessage[];
+  agentId?: string;
+}
+
+// Estados posibles del chat
+type ChatState = "idle" | "sending" | "error";
+
+export default function SharedChatContainer({
+  sessionId: propSessionId,
+  initialMessages = [],
+  agentId: propAgentId,
+}: SharedChatContainerProps) {
   const t = useTranslations("chat");
-  const { messages, setMessages } = useChat();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const searchParams = useSearchParams();
+  const [chatState, setChatState] = useState<ChatState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [effectiveAgentId, setEffectiveAgentId] = useState<string | undefined>(
+    propAgentId
+  );
+  const [isPending, startTransition] = useTransition();
+
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   // Referencia para evitar re-renderizados innecesarios
   const messagesRef = useRef<Message[]>([]);
 
-  // Verificar si se redirigió desde una sesión de chat que no existe
-  const noChat = searchParams.get("noChat") === "true";
-
-  // Extraer el agentId directamente de los parámetros de URL
-  const agentId = searchParams.get("agentId");
+  // Determinar si estamos en modo sesión o en modo chat normal
+  const isSessionMode = !!propSessionId;
 
   // Verificar si el usuario está autenticado
   useEffect(() => {
@@ -57,58 +88,158 @@ export default function ChatContainer({}: ChatContainerProps) {
     checkAuth();
   }, []);
 
-  // Extraer todos los parámetros de URL
-  const urlParams: Record<string, unknown> = {};
+  // Función para obtener el agentId de la sesión
+  const getSessionAgentId = async () => {
+    if (propAgentId) {
+      setEffectiveAgentId(propAgentId);
+      return;
+    }
 
-  // Procesar todos los parámetros de la URL
-  searchParams.forEach((value, key) => {
-    // Si el parámetro es agentConfig, parsearlo como JSON
-    if (key === "agentConfig") {
-      try {
-        urlParams[key] = JSON.parse(value);
-      } catch {
-        console.error("Error al parsear agentConfig");
-        urlParams[key] = value;
-      }
-    }
-    // Convertir "true"/"false" a booleanos
-    else if (value === "true" || value === "false") {
-      urlParams[key] = value === "true";
-    }
-    // Intentar parsear JSON si el valor parece ser un objeto o array
-    else if (
-      (value.startsWith("{") && value.endsWith("}")) ||
-      (value.startsWith("[") && value.endsWith("]"))
-    ) {
-      try {
-        urlParams[key] = JSON.parse(value);
-      } catch {
-        // Si falla el parseo, usar el valor como string
-        urlParams[key] = value;
-      }
-    }
-    // Usar el valor como string para el resto de casos
-    else {
-      urlParams[key] = value;
-    }
-  });
+    if (!propSessionId) return;
 
-  // Efecto para controlar la visibilidad de la tarjeta de bienvenida
+    console.log("=== INICIO getSessionAgentId ===");
+    console.log("SessionId:", propSessionId);
+
+    // Si tenemos mensajes, buscar el agentId en ellos
+    if (initialMessages && initialMessages.length > 0) {
+      console.log("Buscando agentId en los mensajes iniciales...");
+
+      // Ordenar mensajes por fecha (más recientes primero)
+      const sortedMessages = [...initialMessages].sort((a, b) => {
+        const dateA =
+          "created_at" in a
+            ? new Date(a.created_at || "").getTime()
+            : "timestamp" in a && a.timestamp
+            ? new Date(a.timestamp).getTime()
+            : 0;
+        const dateB =
+          "created_at" in b
+            ? new Date(b.created_at || "").getTime()
+            : "timestamp" in b && b.timestamp
+            ? new Date(b.timestamp).getTime()
+            : 0;
+        return dateB - dateA;
+      });
+
+      // Buscar el primer mensaje que tenga metadata con agentId
+      for (const message of sortedMessages) {
+        if (
+          "metadata" in message &&
+          message.metadata &&
+          message.metadata.agentId
+        ) {
+          const foundAgentId = message.metadata.agentId as string;
+          console.log("AgentId encontrado en mensaje:", foundAgentId);
+          setEffectiveAgentId(foundAgentId);
+          console.log("=== FIN getSessionAgentId ===");
+          return;
+        }
+      }
+
+      console.log("No se encontró agentId en los mensajes");
+    }
+
+    // Si no encontramos el agentId en los mensajes, intentar obtenerlo de la API
+    try {
+      console.log("Consultando API para obtener el agentId de la sesión...");
+      const response = await fetch(
+        `/api/chat/session-agent?sessionId=${propSessionId}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.agentId) {
+          console.log("AgentId obtenido de la API:", data.agentId);
+          setEffectiveAgentId(data.agentId);
+          console.log("=== FIN getSessionAgentId ===");
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error al consultar la API:", error);
+    }
+
+    console.log(
+      "No se pudo obtener el agentId, se usará el agente preferido del usuario"
+    );
+    console.log("=== FIN getSessionAgentId ===");
+  };
+
+  // Convertir los mensajes del historial al formato que usa el chat
   useEffect(() => {
-    // Este efecto se mantiene para posibles futuras funcionalidades
-  }, [agentId]);
+    let formattedMessages: Message[] = [];
+
+    if (isSessionMode && initialMessages.length > 0) {
+      // Convertir mensajes de ChatMessage a Message
+      formattedMessages = (initialMessages as ChatMessage[]).flatMap((msg) => {
+        const clientMessages: Message[] = [];
+
+        // Si hay input, agregar mensaje del usuario
+        if (msg.input) {
+          clientMessages.push({
+            id: `${msg.id}-input`,
+            text: msg.input,
+            isUser: true,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            session_id: propSessionId,
+            input: msg.input,
+          });
+        }
+
+        // Si hay output, agregar mensaje del asistente
+        if (msg.output) {
+          clientMessages.push({
+            id: `${msg.id}-output`,
+            text: msg.output,
+            isUser: false,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            session_id: propSessionId,
+            input: "",
+          });
+        }
+
+        return clientMessages;
+      });
+    } else {
+      // En modo chat normal, los mensajes ya están en el formato correcto
+      formattedMessages = initialMessages as Message[];
+    }
+
+    setMessages(formattedMessages);
+  }, [initialMessages, propSessionId, isSessionMode]);
+
+  // Obtener agentId cuando se carga el componente
+  useEffect(() => {
+    getSessionAgentId();
+  }, [propSessionId, propAgentId]);
 
   // Función para desplazarse al final del chat
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      // Usar scrollIntoView con behavior: "auto" para un desplazamiento inmediato
-      // y block: "end" para asegurar que el final sea visible
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      try {
+        // Método 1: Establecer scrollTop directamente
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
 
-      // Usar un enfoque alternativo para asegurar que el scroll funcione en todos los navegadores
-      const lastChild = scrollRef.current.lastElementChild;
-      if (lastChild) {
-        lastChild.scrollIntoView({ behavior: "auto", block: "end" });
+        // Método 2: Usar scrollTo con behavior: "instant"
+        scrollRef.current.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: "instant" as ScrollBehavior,
+        });
+
+        // Método 3: Usar un enfoque alternativo con scrollIntoView
+        const lastChild = scrollRef.current.lastElementChild;
+        if (lastChild) {
+          lastChild.scrollIntoView({ behavior: "auto", block: "end" });
+        }
+
+        // Forzar un reflow para asegurar que el scroll se aplique correctamente
+        void scrollRef.current.offsetHeight;
+      } catch (error) {
+        console.error("Error al hacer scroll:", error);
+        // Fallback simple si algo falla
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
       }
     }
   };
@@ -117,14 +248,38 @@ export default function ChatContainer({}: ChatContainerProps) {
   // Usar useLayoutEffect para que el scroll ocurra antes de la pintura del navegador
   useLayoutEffect(() => {
     scrollToBottom();
+    // Programar múltiples intentos de scroll para asegurar que funcione
+    const scrollTimers = [
+      setTimeout(scrollToBottom, 0),
+      setTimeout(scrollToBottom, 50),
+      setTimeout(scrollToBottom, 100),
+      setTimeout(scrollToBottom, 200),
+    ];
     // Actualizar la referencia para evitar re-renderizados
     messagesRef.current = messages;
+
+    // Limpiar los timers cuando se desmonte el componente
+    return () => {
+      scrollTimers.forEach(clearTimeout);
+    };
   }, [messages]);
 
   // Efecto separado para isTyping para evitar re-renderizados innecesarios
   useLayoutEffect(() => {
     if (isTyping) {
       scrollToBottom();
+      // Programar múltiples intentos de scroll para asegurar que funcione
+      const scrollTimers = [
+        setTimeout(scrollToBottom, 0),
+        setTimeout(scrollToBottom, 50),
+        setTimeout(scrollToBottom, 100),
+        setTimeout(scrollToBottom, 200),
+      ];
+
+      // Limpiar los timers cuando se desmonte el componente
+      return () => {
+        scrollTimers.forEach(clearTimeout);
+      };
     }
   }, [isTyping]);
 
@@ -155,6 +310,8 @@ export default function ChatContainer({}: ChatContainerProps) {
       // Solo hacer scroll si las mutaciones son relevantes
       if (shouldScroll) {
         scrollToBottom();
+        // Intentar nuevamente después de un breve retraso para asegurar que el contenido se haya renderizado completamente
+        setTimeout(scrollToBottom, 50);
       }
     });
 
@@ -173,19 +330,47 @@ export default function ChatContainer({}: ChatContainerProps) {
 
   // Asegurarse de que el scroll funcione cuando la ventana cambia de tamaño
   useEffect(() => {
-    const handleResize = () => scrollToBottom();
+    const handleResize = () => {
+      scrollToBottom();
+      // Intentar nuevamente después de un breve retraso para asegurar que el contenido se haya reajustado
+      setTimeout(scrollToBottom, 100);
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Función para hacer vibrar el dispositivo con un patrón más agradable
+  const vibrate = (pattern: number[] = [50, 30, 80]) => {
+    if (typeof window !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  };
+
+  // Función para obtener los parámetros de la URL
+  const getUrlParams = () => {
+    const params: Record<string, string> = {};
+    if (effectiveAgentId) {
+      params.agentId = effectiveAgentId;
+    }
+    return params;
+  };
 
   const handleSubmit = async (formData: FormData) => {
     const messageText = formData.get("message");
     if (!messageText || typeof messageText !== "string" || !messageText.trim())
       return;
 
-    // Siempre crear un nuevo session_id para un nuevo chat
-    const sessionId = await createNewSessionId();
+    // Cambiar el estado a "sending" y vibrar con un patrón suave
+    setChatState("sending");
+    vibrate([40, 20, 40]);
+    setErrorMessage(null);
 
+    // Determinar el sessionId a usar
+    const sessionId = isSessionMode
+      ? propSessionId!
+      : await createNewSessionId();
+
+    // Crear el mensaje del usuario
     const newMessage: Message = {
       id: generateUUID(),
       text: messageText,
@@ -195,28 +380,38 @@ export default function ChatContainer({}: ChatContainerProps) {
       input: messageText,
     };
 
+    // Actualizar el estado local inmediatamente para mostrar el mensaje del usuario
     const updatedMessages = [...messages, newMessage];
-    await updateMessages(updatedMessages);
     setMessages(updatedMessages);
-    setIsTyping(true);
 
     // Desplazarse al fondo inmediatamente después de mostrar el mensaje del usuario
-    // Usar múltiples intentos de scroll para asegurar que funcione
     scrollToBottom();
     setTimeout(scrollToBottom, 0);
+    setTimeout(scrollToBottom, 50);
     setTimeout(scrollToBottom, 100);
-    setTimeout(scrollToBottom, 300);
+    setTimeout(scrollToBottom, 200);
 
+    // Mostrar el indicador de carga
+    setIsTyping(true);
+
+    // Obtener los parámetros de la URL
+    const urlParams = getUrlParams();
+
+    // Enviar el mensaje al servidor
     try {
-      // Pasar todos los parámetros de URL al enviar el mensaje
+      // Enviar el mensaje al servidor con los parámetros de la URL
       const response = await sendMessage(
         sessionId,
         messageText,
         undefined,
-        Object.keys(urlParams).length > 0 ? urlParams : undefined
+        urlParams
       );
 
       if (response.success) {
+        // Vibrar con un patrón más pronunciado al recibir respuesta
+        vibrate([50, 30, 100]);
+
+        // Crear el mensaje del bot
         const botMessage: Message = {
           id: generateUUID(),
           text: response.message,
@@ -226,25 +421,59 @@ export default function ChatContainer({}: ChatContainerProps) {
           input: "",
         };
 
+        // Ocultar el indicador de carga, mostrar el mensaje del bot y volver al estado "idle"
+        setIsTyping(false);
+        setChatState("idle");
+
+        // Actualizar el estado de los mensajes con el mensaje del bot
         const messagesWithBot = [...updatedMessages, botMessage];
-        await updateMessages(messagesWithBot);
         setMessages(messagesWithBot);
 
         // Desplazarse al fondo después de mostrar el mensaje del bot
-        // Usar múltiples intentos de scroll para asegurar que funcione
         scrollToBottom();
         setTimeout(scrollToBottom, 0);
+        setTimeout(scrollToBottom, 50);
         setTimeout(scrollToBottom, 100);
+        setTimeout(scrollToBottom, 200);
         setTimeout(scrollToBottom, 300);
         setTimeout(scrollToBottom, 500);
 
-        // Solo redirigir a la página de chat si el usuario está autenticado
-        if (isAuthenticated) {
-          router.push(`/chat/${sessionId}`);
+        // Actualizar la base de datos con todos los mensajes
+        await updateMessages(messagesWithBot);
+
+        // Si no estamos en modo sesión y el usuario está autenticado, redirigir a la página de chat con sessionId
+        if (!isSessionMode && isAuthenticated) {
+          // Usar startTransition para una transición más fluida
+          startTransition(() => {
+            router.push(`/chat/${sessionId}`);
+          });
         }
+      } else {
+        // Si hay un error en la respuesta, vibrar con un patrón de error
+        vibrate([100, 50, 100, 50, 100]);
+        setIsTyping(false);
+        setChatState("error");
+        setErrorMessage(response.message || t("error"));
       }
-    } finally {
+    } catch (error) {
+      console.error("Error al enviar el mensaje:", error);
+      // Vibrar con un patrón de error
+      vibrate([100, 50, 100, 50, 100]);
       setIsTyping(false);
+      setChatState("error");
+      setErrorMessage(t("errorMessage"));
+    }
+  };
+
+  // Función para obtener el texto del estado actual
+  const getStateText = () => {
+    switch (chatState) {
+      case "sending":
+        return t("sending");
+      case "error":
+        return errorMessage || t("error");
+      default:
+        return "";
     }
   };
 
@@ -259,27 +488,32 @@ export default function ChatContainer({}: ChatContainerProps) {
 
   const hasUserMessages = messages.some((message) => message.isUser);
 
-  // Función para vibrar el dispositivo
-  const vibrate = (pattern: number[] = [50, 30, 80]) => {
-    if (
-      typeof window !== "undefined" &&
-      window.navigator &&
-      window.navigator.vibrate
-    ) {
-      window.navigator.vibrate(pattern);
-    }
-  };
-
   // Memoizar el agentId para evitar re-renderizados innecesarios
-  const memoizedAgentId = useMemo(() => agentId || undefined, [agentId]);
+  const memoizedAgentId = useMemo(() => effectiveAgentId, [effectiveAgentId]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative">
-      {noChat && (
-        <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 p-3 text-center text-sm">
-          {t("chatNotFound", {
-            defaultValue: "The chat session was not found or has been deleted.",
-          })}
+    <div
+      className={cn(
+        "flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative",
+        isPending && "opacity-80 transition-opacity duration-300"
+      )}
+    >
+      {isPending && (
+        <div className="absolute inset-0 bg-background/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <div
+              className="w-2 h-2 bg-primary rounded-full animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            />
+            <div
+              className="w-2 h-2 bg-primary rounded-full animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            />
+            <div
+              className="w-2 h-2 bg-primary rounded-full animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            />
+          </div>
         </div>
       )}
 
@@ -288,7 +522,6 @@ export default function ChatContainer({}: ChatContainerProps) {
         ref={scrollRef}
       >
         {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
-
         <div className="container mx-auto max-w-3xl">
           <AgentWelcomeCard agentId={memoizedAgentId} />
         </div>
@@ -346,6 +579,7 @@ export default function ChatContainer({}: ChatContainerProps) {
             </div>
           ))}
 
+          {/* Indicador de escritura */}
           {isTyping && (
             <div className="flex items-start gap-3 mb-6 mr-auto">
               <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0">
@@ -372,9 +606,16 @@ export default function ChatContainer({}: ChatContainerProps) {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
+      {/* Estado del chat - solo mostrar errores sin animaciones */}
+      {chatState === "error" && (
+        <div className="px-4 py-1.5 text-xs text-center text-destructive bg-destructive/10">
+          {getStateText()}
+        </div>
+      )}
+
+      <div className="fixed bottom-0 left-0 right-0  bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
         <div className="container px-2 mx-auto max-w-3xl pb-4">
-          {!hasUserMessages ? (
+          {!hasUserMessages && !isSessionMode ? (
             <div className="flex flex-col items-center px-4 mb-2 text-center">
               <Button
                 onClick={() => {
@@ -404,6 +645,7 @@ export default function ChatContainer({}: ChatContainerProps) {
                 vibrate([40, 20, 40]);
                 return handleSubmit(formData);
               }}
+              disabled={chatState === "error"}
               className="pt-2"
             />
           )}

@@ -1,48 +1,19 @@
-"use server";
 import { getChatHistory } from "@/app/actions/chat";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import ChatSessionContainer from "./chat-session-container";
-import { Metadata, ResolvingMetadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import SharedChatContainer from "@/components/chat/chat-container";
 
-interface ChatPageProps {
-  params: Promise<{
+interface SessionChatPageProps {
+  params: {
     session_id: string;
-  }>;
-}
-
-export async function generateMetadata(
-  { params }: ChatPageProps,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
-  const { session_id } = await params;
-  const t = await getTranslations("chat");
-
-  // Puedes obtener metadatos del padre si es necesario
-  const previousImages = (await parent).openGraph?.images || [];
-
-  const sessionIdShort = session_id.substring(0, 8);
-
-  return {
-    title: t("sessionTitle", { id: sessionIdShort }),
-    description: t("sessionDescription", { id: sessionIdShort }),
-    openGraph: {
-      title: t("sessionTitle", { id: sessionIdShort }),
-      description: t("sessionDescription", { id: sessionIdShort }),
-      images: [...previousImages],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("sessionTitle", { id: sessionIdShort }),
-      description: t("sessionDescription", { id: sessionIdShort }),
-    },
   };
 }
 
-export default async function ChatPage({ params }: ChatPageProps) {
-  const { session_id } = await params;
+export default async function SessionChatPage({
+  params,
+}: SessionChatPageProps) {
+  const { session_id } = params;
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
@@ -79,10 +50,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
       (message) => message.session_id === session_id
     );
 
-    // Incluso si no hay mensajes, permitimos acceder a la sesión
-    // Esto permite crear nuevos chats con un ID de sesión específico
-
-    // Serializar los mensajes para pasarlos al cliente (o un array vacío si no hay mensajes)
+    // Serializar los mensajes para pasarlos al cliente
     const serializedMessages =
       sessionMessages?.map((message) => ({
         ...message,
@@ -92,7 +60,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
       })) || [];
 
     return (
-      <ChatSessionContainer
+      <SharedChatContainer
         sessionId={session_id}
         initialMessages={serializedMessages}
       />

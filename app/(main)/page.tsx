@@ -1,5 +1,6 @@
-import ChatContainer from "@/components/chat/chat-container";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <ChatContainer />;
+  // Redirigir a la ruta de chat
+  redirect("/chat");
 }

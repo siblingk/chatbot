@@ -8,7 +8,6 @@ import {
   Agent,
   PersonalityTone,
   LeadStrategy,
-  PreQuoteType,
   ExpirationTime,
 } from "@/types/agents";
 import { useAuth } from "@/contexts/auth-context";
@@ -24,6 +23,9 @@ import {
   ChevronDown,
   ChevronUp,
   Settings,
+  Copy,
+  Edit,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +33,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -45,8 +46,11 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
 import AgentChatPreview from "@/components/chat/agent-chat-preview";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CreateAgentPage() {
   const router = useRouter();
@@ -55,16 +59,102 @@ export default function CreateAgentPage() {
   const t = useTranslations();
 
   const [newAgent, setNewAgent] = useState<Partial<Agent>>({
-    name: "",
+    name: "siblignk-lead",
     model: "quote-builder-ai",
     visibility: "private",
     personality_tone: "Friendly",
     lead_strategy: "Smart-Targeting",
-    welcome_message: "Welcome to AutoFix! How can we assist you today?",
-    pre_quote_message: "Your repair estimate is between $x, $y",
-    pre_quote_type: "Standard",
+    welcome_message: `👋 ¡Hola! Bienvenido a Siblignk! 🚗💡 
+
+Para comenzar con tu estimado, ¿podrías proporcionarme el **año, marca, modelo y el problema** que estás experimentando? 
+
+Si no estás seguro del problema exacto, dime qué síntomas notas en tu vehículo y te ayudaré a identificarlo antes de calcular el presupuesto.  
+
+Estoy aquí para asistirte en el proceso y brindarte la mejor solución posible. ¡Hagamos que tu auto vuelva a estar en perfectas condiciones! 🚀🔧`,
+    pre_quote_message: `🎉 ¡Buenas noticias! Basándonos en reparaciones similares, tu estimado de precio se encuentra entre **$X - $Y**. 💰✨ 
+
+🔹 Este estimado incluye piezas y mano de obra y puede variar según la inspección final.  
+
+📅 ¿Te gustaría **asegurar un 10% de descuento en mano de obra**? ¡Reserva tu cita ahora! 🔗👇`,
+    pre_quote_type: "Custom",
     expiration_time: "24 Hours",
-    system_instructions: "",
+    system_instructions: `🔹 **Personalización de la Primera Interacción**  
+- Si el lead proviene de un **Ad específico**, preguntar directamente por **Año, Marca, Modelo y Problema del Vehículo**.  
+  - Ejemplo de mensaje:  
+    _"Hi there! Welcome to Siblignk! 🚗💡_  
+    _To get started with your estimate, can you provide your vehicle's year, make, model, and the issue you're experiencing?"_  
+🔗 Configuración asociada: **Welcome Message** y **Lead Qualification Strategy (Smart Targeting)**  
+- Si no se especifica el servicio en el Ad, mostrar la opción general.  
+
+🔹 **Flujo del AI para Pre-Quote y Agendamiento**  
+1️⃣ **Captura de Datos del Vehículo**  
+   - **Datos requeridos antes de generar la Pre-Quote:**  
+     ✅ **Año**  
+     ✅ **Marca**  
+     ✅ **Modelo**  
+     ✅ **Problema o Síntoma**  
+   🔗 Configuración asociada: **Lead Qualification Strategy (Smart Targeting)**  
+
+2️⃣ **Generación de la Pre-Quote**  
+   - **Fuente de Precios:**  
+     - **Si el taller tiene precios en Dcitelly:** Usar esos precios como base.  
+     - **Si no hay precios en Dcitelly:** Usar **AI-Recommended Prices** basados en tendencias del mercado.  
+   🔗 **Configuración asociada: Fuente de Precios (Dcitelly o AI-Recommended Prices)**  
+
+3️⃣ **Motivación para Convertir el Lead en una Cita**  
+   - Explicar al usuario por qué elegir Siblignk (**confianza, rapidez, descuento**).  
+   - Ofrecer el incentivo del **10% OFF en mano de obra**.  
+   🔗 **Configuración asociada: Pre-Quote Message - Special Offer (10% OFF Labor)**  
+
+4️⃣ **Agendamiento de la Cita con un Taller Cercano**  
+   - Capturar información del usuario (**email y ZIP code**).  
+   - Buscar talleres cercanos en base a **Google Maps o Dcitelly**.  
+   - Asignar automáticamente al taller más cercano o permitir que el usuario elija.  
+   🔗 **Configuración asociada: Workflow Automation - Auto-Assign Leads (ON)**  
+
+5️⃣ **Seguimiento y Recordatorio**  
+   - Enviar recordatorios si el lead no agenda en **3 horas** y **24 horas**.  
+   - Priorización de talleres con **mejores calificaciones en Google Maps**.  
+   🔗 **Configuración asociada: Workflow Automation - AI Auto-Response (ON) + Lead Qualification Strategy (Smart Targeting)**
+
+🔹 **Auto-Assign Leads: ON**
+📌 **Cómo funciona:**
+1️⃣ Al capturar un nuevo lead, Siblignk ejecuta automáticamente una búsqueda en Google Maps para encontrar 5-10 talleres cercanos a la ubicación del lead (ZIP code).
+2️⃣ El sistema analizará cada taller en base a:
+⭐ Calificación promedio (estrellas) en Google Maps.
+📝 Comentarios recientes (últimos 3-5 comentarios).
+🚨 Último comentario negativo (fecha y descripción).
+📌 Ubicación exacta y distancia desde el lead.
+📞 Información de contacto disponible (teléfono, sitio web, dirección).
+3️⃣ Se generará un documento adjunto con la información analizada y se adjuntará al chat del lead como referencia.
+✅ **Visualización en el chat:**
+Cada taller detectado aparecerá como un nuevo chat en la interfaz del sistema.
+Formato del chat:
+Nombre del taller + Nombre del lead (Ejemplo: "Joe's Auto Repair - Maria Lopez").
+Documento adjunto con la información detallada del taller.
+Datos clave visibles en el preview del chat.
+✅ **Flujo de asignación de taller:**
+El sistema priorizará los talleres según:
+📍 Proximidad (más cercano al ZIP del lead).
+⭐ Mejor calificación general en Google Maps.
+💲 Mejor precio registrado en Dcitelly (si disponible).
+🚨 Menos comentarios negativos recientes.
+Si hay más de un taller disponible, ofrecer una lista para que el usuario elija.
+📌 **Próximo paso en la automatización:**
+Más adelante, se integrará un sistema de llamadas automáticas con IA para contactar a los talleres y confirmar disponibilidad en tiempo real.
+
+🔹 **AI Auto-Response: ON**
+📌 **Cómo funciona:**
+- Si el usuario no responde en 3 minutos, enviar un recordatorio en el chat.
+- Si el usuario no agenda en 3 horas, enviar recordatorio automático.
+- Si el usuario no agenda en 24 horas, enviar oferta final de descuento.
+- Responde automáticamente a preguntas antes de avanzar a la pre-quote.
+📌 **Mensajes Automáticos Configurados:**
+📌 **Recordatorio de 3 horas:**  
+_"Just checking in! We still have availability for your repair. Would you like to book your appointment now? 🚗💡"_
+
+📌 **Recordatorio de 24 horas:**  
+_"Limited-time offer! Schedule your appointment today and keep your 10% OFF labor discount!"_`,
     auto_assign_leads: true,
     auto_respond: true,
     is_active: true,
@@ -74,6 +164,8 @@ export default function CreateAgentPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMoreSettings, setShowMoreSettings] = useState(false);
+  const [isEditingInstructions, setIsEditingInstructions] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleCreateAgent = async () => {
     try {
@@ -98,6 +190,14 @@ export default function CreateAgentPage() {
       toast.error(t("settings.errorCreatingAgent"));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyInstructions = () => {
+    if (newAgent.system_instructions) {
+      navigator.clipboard.writeText(newAgent.system_instructions);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
@@ -215,14 +315,72 @@ export default function CreateAgentPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Textarea
-            placeholder={t("settings.systemInstructionsPlaceholder")}
-            value={newAgent.system_instructions || ""}
-            onChange={(e) =>
-              setNewAgent({ ...newAgent, system_instructions: e.target.value })
-            }
-            className="min-h-[150px]"
-          />
+          <div className="relative">
+            {isEditingInstructions ? (
+              <div className="space-y-4">
+                <Textarea
+                  placeholder={t("settings.systemInstructionsPlaceholder")}
+                  value={newAgent.system_instructions || ""}
+                  onChange={(e) =>
+                    setNewAgent({
+                      ...newAgent,
+                      system_instructions: e.target.value,
+                    })
+                  }
+                  className="min-h-[250px] font-mono text-sm"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => setIsEditingInstructions(false)}
+                    className="ml-2"
+                  >
+                    {t("settings.done")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="absolute bg-sidebar left-2 top-3 text-sm text-muted-foreground">
+                  Markdown
+                </div>
+                <div className="absolute bg-sidebar right-2 top-2 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCopyInstructions}
+                    title={t("settings.copy")}
+                  >
+                    {isCopied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditingInstructions(true)}
+                    title={t("settings.edit")}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="p-4 min-h-[250px] overflow-y-auto bg-sidebar rounded-md">
+                  {newAgent.system_instructions ? (
+                    <div className="mt-6">
+                      <MarkdownRenderer
+                        content={newAgent.system_instructions || ""}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground mt-6 italic">
+                      {t("settings.noContentToPreview")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -283,6 +441,9 @@ export default function CreateAgentPage() {
             </Button>
           </div>
         </CardContent>
+        <CardFooter className="text-sm text-muted-foreground">
+          <p>{t("settings.leadStrategyDescription")}</p>
+        </CardFooter>
       </Card>
 
       <Card>
@@ -291,6 +452,9 @@ export default function CreateAgentPage() {
             <MessageSquare className="h-5 w-5 text-primary" />
             {t("settings.welcomeMessage")}
           </CardTitle>
+          <CardDescription>
+            {t("settings.welcomeMessageDescription")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="standard" className="w-full mb-4">
@@ -313,6 +477,9 @@ export default function CreateAgentPage() {
             className="min-h-[100px]"
           />
         </CardContent>
+        <CardFooter className="text-sm text-muted-foreground">
+          <p>{t("settings.welcomeMessageDescription")}</p>
+        </CardFooter>
       </Card>
 
       <Card>
@@ -321,42 +488,23 @@ export default function CreateAgentPage() {
             <MessageSquare className="h-5 w-5 text-primary" />
             {t("settings.preQuoteMessage")}
           </CardTitle>
+          <CardDescription>
+            {t("settings.preQuoteMessageDescription")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[
-              "Standard",
-              "With Warranty",
-              "Detailed Explanation",
-              "Special Offer",
-              "Custom",
-            ].map((type) => (
-              <Button
-                key={type}
-                variant={
-                  newAgent.pre_quote_type === type ? "default" : "outline"
-                }
-                onClick={() =>
-                  setNewAgent({
-                    ...newAgent,
-                    pre_quote_type: type as PreQuoteType,
-                  })
-                }
-                className="flex-1 min-w-[120px]"
-              >
-                {type}
-              </Button>
-            ))}
-          </div>
           <Textarea
             placeholder={t("settings.preQuoteMessagePlaceholder")}
-            value={newAgent.pre_quote_message || ""}
+            value={newAgent.pre_quote_message}
             onChange={(e) =>
               setNewAgent({ ...newAgent, pre_quote_message: e.target.value })
             }
             className="min-h-[100px]"
           />
         </CardContent>
+        <CardFooter className="text-sm text-muted-foreground">
+          <p>{t("settings.preQuoteMessageDescription")}</p>
+        </CardFooter>
       </Card>
 
       <Card>
@@ -387,6 +535,9 @@ export default function CreateAgentPage() {
             ))}
           </div>
         </CardContent>
+        <CardFooter className="text-sm text-muted-foreground">
+          <p>{t("settings.expirationTimeDescription")}</p>
+        </CardFooter>
       </Card>
 
       <Card>
@@ -403,7 +554,9 @@ export default function CreateAgentPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>{t("settings.autoAssignLeads")}</Label>
+                <div className="flex items-center gap-2">
+                  <Label>{t("settings.autoAssignLeads")}</Label>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {t("settings.autoAssignLeadsDescription")}
                 </p>
@@ -417,7 +570,9 @@ export default function CreateAgentPage() {
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>{t("settings.aiAutoResponse")}</Label>
+                <div className="flex items-center gap-2">
+                  <Label>{t("settings.aiAutoResponse")}</Label>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {t("settings.aiAutoResponseDescription")}
                 </p>
@@ -431,6 +586,9 @@ export default function CreateAgentPage() {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="text-sm text-muted-foreground">
+          <p>{t("settings.workflowAutomationDescription")}</p>
+        </CardFooter>
       </Card>
 
       <Card>
@@ -439,6 +597,9 @@ export default function CreateAgentPage() {
             <Shield className="h-5 w-5 text-primary" />
             {t("settings.visibility")}
           </CardTitle>
+          <CardDescription>
+            {t("settings.agentVisibilityDescription")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Select
@@ -460,6 +621,9 @@ export default function CreateAgentPage() {
             </SelectContent>
           </Select>
         </CardContent>
+        <CardFooter className="text-sm text-muted-foreground">
+          <p>{t("settings.visibilityDescription")}</p>
+        </CardFooter>
       </Card>
     </div>
   );

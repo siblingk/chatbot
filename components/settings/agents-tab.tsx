@@ -12,7 +12,15 @@ import {
   LeadStrategy,
 } from "@/types/agents";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import {
+  PlusCircle,
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -48,6 +56,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface AgentsTabProps {
   agentConfig?: AgentConfig;
@@ -65,6 +74,8 @@ export function AgentsTab({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
+  const [isEditingInstructions, setIsEditingInstructions] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [newAgent, setNewAgent] = useState<Partial<Agent>>({
     name: "",
     model: "quote-builder-ai",
@@ -160,6 +171,14 @@ export function AgentsTab({
     } catch (error) {
       console.error("Error deleting agent:", error);
       toast.error(t("errorDeletingAgent"));
+    }
+  };
+
+  const handleCopyInstructions = (instructions: string | undefined) => {
+    if (instructions) {
+      navigator.clipboard.writeText(instructions);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
@@ -438,15 +457,66 @@ export function AgentsTab({
           <Label htmlFor="agent-system-instructions">
             {t("agentSystemInstructions")}
           </Label>
-          <Textarea
-            id="agent-system-instructions"
-            placeholder={t("systemInstructionsPlaceholder")}
-            value={agent.system_instructions || ""}
-            onChange={(e) =>
-              onChange({ ...agent, system_instructions: e.target.value })
-            }
-            rows={5}
-          />
+          <div className="relative">
+            {isEditingInstructions ? (
+              <div className="space-y-4">
+                <Textarea
+                  id="agent-system-instructions"
+                  placeholder={t("systemInstructionsPlaceholder")}
+                  value={agent.system_instructions || ""}
+                  onChange={(e) =>
+                    onChange({ ...agent, system_instructions: e.target.value })
+                  }
+                  className="min-h-[250px] font-mono text-sm"
+                  rows={8}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => setIsEditingInstructions(false)}
+                    className="ml-2"
+                  >
+                    {t("done")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="border rounded-md relative">
+                <div className="absolute right-2 top-2 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      handleCopyInstructions(agent.system_instructions)
+                    }
+                    title={t("copy")}
+                  >
+                    {isCopied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditingInstructions(true)}
+                    title={t("edit")}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="p-4 min-h-[250px] overflow-y-auto bg-background">
+                  {agent.system_instructions ? (
+                    <MarkdownRenderer content={agent.system_instructions} />
+                  ) : (
+                    <p className="text-muted-foreground italic">
+                      {t("noContentToPreview")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {t("systemInstructionsDescription")}
           </p>

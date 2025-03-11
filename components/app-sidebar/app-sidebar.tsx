@@ -44,7 +44,7 @@ export async function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader />
 
-      <SidebarContent>
+      <SidebarContent className="-mt-2">
         <Collapsible defaultOpen className="group/collapsible">
           <SidebarGroup>
             <SidebarGroupLabel asChild>

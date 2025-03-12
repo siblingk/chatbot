@@ -43,10 +43,14 @@ export async function createNewSessionId(): Promise<string> {
 export async function getCurrentUser() {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.user || null;
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("Error getting current user:", error.message);
+    return null;
+  }
+
+  return data.user || null;
 }
 
 export async function getStoredMessages(): Promise<Message[]> {

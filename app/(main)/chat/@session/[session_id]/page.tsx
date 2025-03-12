@@ -17,25 +17,16 @@ export default async function SessionChatPage({
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
-  // Verificar si el usuario está autenticado
-  const { data: session, error: sessionError } =
-    await supabase.auth.getSession();
+  // Verificar si el usuario está autenticado de forma segura
+  const { data, error: userError } = await supabase.auth.getUser();
 
-  // Si no hay sesión o hay un error, redirigir a la página principal
-  if (!session?.session || sessionError) {
+  // Si no hay usuario o hay un error, redirigir a la página principal
+  if (!data.user || userError) {
     console.log("Usuario no autenticado, redirigiendo a la página principal");
     redirect("/");
   }
 
-  // Obtener información del usuario
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-
-  if (userError) {
-    console.error("Error al obtener información del usuario:", userError);
-    redirect("/");
-  }
-
-  const userId = userData?.user?.id;
+  const userId = data.user.id;
 
   if (!userId) {
     console.error("ID de usuario no disponible");

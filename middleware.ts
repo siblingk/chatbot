@@ -56,7 +56,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getSession();
+  // Verificar la autenticación de forma segura
+  await supabase.auth.getUser();
 
   return response;
 }

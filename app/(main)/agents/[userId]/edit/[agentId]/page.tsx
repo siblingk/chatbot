@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -41,6 +41,7 @@ import {
   Check,
   FileText,
   Store,
+  Link,
 } from "lucide-react";
 import AgentChatPreview from "@/components/chat/agent-chat-preview";
 import { PreviewUrlGenerator } from "@/components/settings/preview-url-generator";
@@ -56,6 +57,7 @@ import {
 } from "@/components/ui/dialog";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HeadingSelector } from "@/components/ui/heading-selector";
 
 export default function EditAgentPage() {
   const params = useParams();
@@ -86,83 +88,136 @@ Estoy aquí para asistirte en el proceso y brindarte la mejor solución posible.
 📅 ¿Te gustaría **asegurar un 10% de descuento en mano de obra**? ¡Reserva tu cita ahora! 🔗👇`,
     pre_quote_type: "Custom",
     expiration_time: "24 Hours",
-    system_instructions: `🔹 **Personalización de la Primera Interacción**  
+    system_instructions: `# Instrucciones del Sistema
+
+## Personalización de la Primera Interacción
 - Si el lead proviene de un **Ad específico**, preguntar directamente por **Año, Marca, Modelo y Problema del Vehículo**.  
   - Ejemplo de mensaje:  
     _"Hi there! Welcome to Siblignk! 🚗💡_  
     _To get started with your estimate, can you provide your vehicle's year, make, model, and the issue you're experiencing?"_  
-🔗 Configuración asociada: **Welcome Message** y **Lead Qualification Strategy (Smart Targeting)**  
+- Configuración asociada: **Welcome Message** y **Lead Qualification Strategy (Smart Targeting)**  
 - Si no se especifica el servicio en el Ad, mostrar la opción general.  
+- Para más detalles, consulta la [documentación sobre estrategias de leads](#estrategias-de-calificacion).
 
-🔹 **Flujo del AI para Pre-Quote y Agendamiento**  
-1️⃣ **Captura de Datos del Vehículo**  
+## Flujo del AI para Pre-Quote y Agendamiento
+
+### Captura de Datos del Vehículo
    - **Datos requeridos antes de generar la Pre-Quote:**  
      ✅ **Año**  
      ✅ **Marca**  
      ✅ **Modelo**  
      ✅ **Problema o Síntoma**  
-   🔗 Configuración asociada: **Lead Qualification Strategy (Smart Targeting)**  
+- Configuración asociada: **Lead Qualification Strategy (Smart Targeting)**
 
-2️⃣ **Generación de la Pre-Quote**  
+### Generación de la Pre-Quote
    - **Fuente de Precios:**  
      - **Si el taller tiene precios en Dcitelly:** Usar esos precios como base.  
      - **Si no hay precios en Dcitelly:** Usar **AI-Recommended Prices** basados en tendencias del mercado.  
-   🔗 **Configuración asociada: Fuente de Precios (Dcitelly o AI-Recommended Prices)**  
+- **Configuración asociada: Fuente de Precios (Dcitelly o AI-Recommended Prices)**
+- Ver [configuración de precios](#configuracion-de-precios) en la documentación.
 
-3️⃣ **Motivación para Convertir el Lead en una Cita**  
+### Motivación para Convertir el Lead en una Cita
    - Explicar al usuario por qué elegir Siblignk (**confianza, rapidez, descuento**).  
    - Ofrecer el incentivo del **10% OFF en mano de obra**.  
-   🔗 **Configuración asociada: Pre-Quote Message - Special Offer (10% OFF Labor)**  
+- **Configuración asociada: Pre-Quote Message - Special Offer (10% OFF Labor)**
 
-4️⃣ **Agendamiento de la Cita con un Taller Cercano**  
+### Agendamiento de la Cita con un Taller Cercano
    - Capturar información del usuario (**email y ZIP code**).  
    - Buscar talleres cercanos en base a **Google Maps o Dcitelly**.  
    - Asignar automáticamente al taller más cercano o permitir que el usuario elija.  
-   🔗 **Configuración asociada: Workflow Automation - Auto-Assign Leads (ON)**  
+- **Configuración asociada: Workflow Automation - Auto-Assign Leads (ON)**
 
-5️⃣ **Seguimiento y Recordatorio**  
+### Seguimiento y Recordatorio
    - Enviar recordatorios si el lead no agenda en **3 horas** y **24 horas**.  
    - Priorización de talleres con **mejores calificaciones en Google Maps**.  
-   🔗 **Configuración asociada: Workflow Automation - AI Auto-Response (ON) + Lead Qualification Strategy (Smart Targeting)**
+- **Configuración asociada: Workflow Automation - AI Auto-Response (ON) + Lead Qualification Strategy (Smart Targeting)**
 
-🔹 **Auto-Assign Leads: ON**
-📌 **Cómo funciona:**
-1️⃣ Al capturar un nuevo lead, Siblignk ejecuta automáticamente una búsqueda en Google Maps para encontrar 5-10 talleres cercanos a la ubicación del lead (ZIP code).
-2️⃣ El sistema analizará cada taller en base a:
+## Auto-Assign Leads: ON
+**Cómo funciona:**
+1. Al capturar un nuevo lead, Siblignk ejecuta automáticamente una búsqueda en Google Maps para encontrar 5-10 talleres cercanos a la ubicación del lead (ZIP code).
+2. El sistema analizará cada taller en base a:
 ⭐ Calificación promedio (estrellas) en Google Maps.
 📝 Comentarios recientes (últimos 3-5 comentarios).
 🚨 Último comentario negativo (fecha y descripción).
 📌 Ubicación exacta y distancia desde el lead.
 📞 Información de contacto disponible (teléfono, sitio web, dirección).
-3️⃣ Se generará un documento adjunto con la información analizada y se adjuntará al chat del lead como referencia.
-✅ **Visualización en el chat:**
-Cada taller detectado aparecerá como un nuevo chat en la interfaz del sistema.
-Formato del chat:
-Nombre del taller + Nombre del lead (Ejemplo: "Joe's Auto Repair - Maria Lopez").
-Documento adjunto con la información detallada del taller.
-Datos clave visibles en el preview del chat.
-✅ **Flujo de asignación de taller:**
-El sistema priorizará los talleres según:
-📍 Proximidad (más cercano al ZIP del lead).
-⭐ Mejor calificación general en Google Maps.
-💲 Mejor precio registrado en Dcitelly (si disponible).
-🚨 Menos comentarios negativos recientes.
-Si hay más de un taller disponible, ofrecer una lista para que el usuario elija.
-📌 **Próximo paso en la automatización:**
-Más adelante, se integrará un sistema de llamadas automáticas con IA para contactar a los talleres y confirmar disponibilidad en tiempo real.
+3. Se generará un documento adjunto con la información analizada y se adjuntará al chat del lead como referencia.
 
-🔹 **AI Auto-Response: ON**
-📌 **Cómo funciona:**
+## AI Auto-Response: ON
+**Cómo funciona:**
 - Si el usuario no responde en 3 minutos, enviar un recordatorio en el chat.
 - Si el usuario no agenda en 3 horas, enviar recordatorio automático.
 - Si el usuario no agenda en 24 horas, enviar oferta final de descuento.
 - Responde automáticamente a preguntas antes de avanzar a la pre-quote.
-📌 **Mensajes Automáticos Configurados:**
-📌 **Recordatorio de 3 horas:**  
-_"Just checking in! We still have availability for your repair. Would you like to book your appointment now? 🚗💡"_
+- Ver [mensajes automáticos](#mensajes-automaticos) en la documentación.`,
+    documentation: `# Documentación del Agente
 
-📌 **Recordatorio de 24 horas:**  
-_"Limited-time offer! Schedule your appointment today and keep your 10% OFF labor discount!"_`,
+## Introducción
+Este documento proporciona información detallada sobre las capacidades y configuraciones del agente de IA para la generación y gestión de leads en talleres automotrices.
+
+## Índice
+1. [Estrategias de Calificación](#estrategias-de-calificacion)
+2. [Configuración de Precios](#configuracion-de-precios)
+3. [Automatización de Flujo de Trabajo](#automatizacion-de-flujo)
+4. [Mensajes Automáticos](#mensajes-automaticos)
+
+## Estrategias de Calificación {#estrategias-de-calificacion}
+
+### Smart Targeting
+La estrategia Smart Targeting utiliza un enfoque adaptativo para recopilar información del cliente:
+- Realiza preguntas progresivas basadas en respuestas anteriores
+- Analiza el comportamiento del usuario para determinar su interés
+- Prioriza leads con mayor probabilidad de conversión
+
+Para configurar esta estrategia, consulta las [instrucciones del sistema sobre captura de datos](#captura-de-datos-del-vehiculo).
+
+### Strict Filtering
+La estrategia Strict Filtering establece requisitos obligatorios antes de procesar un lead:
+- Exige información completa del vehículo
+- Verifica datos de contacto
+- Aplica filtros de calidad para evitar leads no calificados
+
+## Configuración de Precios {#configuracion-de-precios}
+
+### Integración con Dcitelly
+Cuando el taller tiene precios configurados en Dcitelly:
+- Los precios se sincronizan automáticamente
+- Se calculan tarifas de mano de obra según configuración del taller
+- Se aplican descuentos configurados
+
+### Precios Recomendados por IA
+Cuando no hay precios disponibles en Dcitelly:
+- La IA analiza tendencias del mercado local
+- Considera la complejidad del servicio
+- Propone rangos de precios competitivos
+
+## Automatización de Flujo de Trabajo {#automatizacion-de-flujo}
+
+### Auto-Assign Leads
+Cuando esta función está activada:
+1. El sistema busca talleres cercanos al código postal del cliente
+2. Analiza calificaciones y reseñas en Google Maps
+3. Prioriza talleres según proximidad y calificación
+4. Asigna automáticamente o presenta opciones al cliente
+
+Para más detalles, consulta las [instrucciones sobre Auto-Assign Leads](#auto-assign-leads-on).
+
+### AI Auto-Response
+Gestiona la comunicación automática con el cliente:
+- Envía recordatorios programados
+- Responde preguntas frecuentes
+- Ofrece promociones especiales para incentivar la conversión
+
+## Mensajes Automáticos {#mensajes-automaticos}
+
+### Recordatorios Configurados
+El sistema envía los siguientes mensajes automáticos:
+
+**Recordatorio de 3 horas:**
+"Just checking in! We still have availability for your repair. Would you like to book your appointment now? 🚗💡"
+
+**Recordatorio de 24 horas:**
+"Limited-time offer! Schedule your appointment today and keep your 10% OFF labor discount!"`,
     auto_assign_leads: true,
     auto_respond: true,
     is_active: true,
@@ -177,8 +232,21 @@ _"Limited-time offer! Schedule your appointment today and keep your 10% OFF labo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMoreSettings, setShowMoreSettings] = useState(false);
   const [isEditingInstructions, setIsEditingInstructions] = useState(false);
+  const [isEditingDocumentation, setIsEditingDocumentation] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("system-instructions");
+
+  // Referencias para los contenedores de markdown
+  const instructionsRef = useRef<HTMLDivElement>(null);
+  const documentationRef = useRef<HTMLDivElement>(null);
+
+  // Estado para almacenar los encabezados encontrados
+  const [instructionsHeadings, setInstructionsHeadings] = useState<
+    { id: string; text: string; level: number }[]
+  >([]);
+  const [documentationHeadings, setDocumentationHeadings] = useState<
+    { id: string; text: string; level: number }[]
+  >([]);
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -269,84 +337,331 @@ _"Limited-time offer! Schedule your appointment today and keep your 10% OFF labo
     }
   };
 
-  const renderSystemInstructions = (content: string) => {
-    // Reemplazar todos los enlaces que tienen 🔗
-    const processedContent = content.replace(
-      /🔗\s*(.*?)(?=\n|$)/g,
-      (match, p1) => {
-        // Mapeo de textos a IDs de sección
-        const sectionMap: { [key: string]: string } = {
-          "Configuración asociada: **Welcome Message**": "welcome-message",
-          "Configuración asociada: **Welcome Message** y **Lead Qualification Strategy (Smart Targeting)**":
-            "welcome-message",
-          "Configuración asociada: **Lead Qualification Strategy (Smart Targeting)**":
-            "lead-strategy",
-          "**Configuración asociada: Fuente de Precios (Dcitelly o AI-Recommended Prices)**":
-            "pricing",
-          "**Configuración asociada: Pre-Quote Message - Special Offer (10% OFF Labor)**":
-            "special-offer",
-          "**Configuración asociada: Workflow Automation - Auto-Assign Leads (ON)**":
-            "auto-assign",
-          "**Configuración asociada: Workflow Automation - AI Auto-Response (ON)**":
-            "auto-respond",
-          "**Configuración asociada: Workflow Automation - AI Auto-Response (ON) + Lead Qualification Strategy (Smart Targeting)**":
-            "auto-respond",
-        };
+  // Función para manejar clics en enlaces internos entre pestañas
+  const handleInternalLinkClick = (href: string) => {
+    // Verificar en qué pestaña estamos actualmente
+    const currentTab = activeTab;
+    const targetId = href.substring(1); // Eliminar el # del inicio
 
-        // Buscar la mejor coincidencia en el mapa de secciones
-        let sectionId = "";
-        for (const [key, value] of Object.entries(sectionMap)) {
-          if (p1.includes(key) || key.includes(p1)) {
-            sectionId = value;
-            break;
-          }
-        }
+    // Intentar encontrar el elemento en la pestaña actual
+    const currentContainer =
+      currentTab === "system-instructions"
+        ? instructionsRef.current
+        : documentationRef.current;
 
-        // Si no se encontró una coincidencia exacta, intentar coincidencia parcial
-        if (!sectionId) {
-          if (p1.toLowerCase().includes("welcome"))
-            sectionId = "welcome-message";
-          else if (p1.toLowerCase().includes("lead"))
-            sectionId = "lead-strategy";
-          else if (p1.toLowerCase().includes("price")) sectionId = "pricing";
-          else if (p1.toLowerCase().includes("offer"))
-            sectionId = "special-offer";
-          else if (p1.toLowerCase().includes("assign"))
-            sectionId = "auto-assign";
-          else if (p1.toLowerCase().includes("response"))
-            sectionId = "auto-respond";
-        }
+    if (currentContainer) {
+      // Buscar el elemento con id o data-heading-id en el contenedor actual
+      const targetElement =
+        currentContainer.querySelector(`#${targetId}`) ||
+        currentContainer.querySelector(`[data-heading-id="${targetId}"]`);
 
-        return `[🔗 ${p1}](#${sectionId})`;
+      if (targetElement) {
+        // Si encontramos el elemento en la pestaña actual, desplazarse a él
+        targetElement.scrollIntoView({ behavior: "smooth" });
+        return;
       }
-    );
+    }
 
-    // Manejador de clics para los enlaces
-    const handleLinkClick = (e: React.MouseEvent<HTMLElement>) => {
-      const target = e.target as HTMLElement;
-      const link = target.closest("a");
-      if (link) {
-        e.preventDefault();
-        const href = link.getAttribute("href");
-        if (href && href.startsWith("#")) {
-          const sectionId = href.substring(1);
-          setActiveTab("documentation");
-          setTimeout(() => {
-            const section = document.getElementById(sectionId);
-            if (section) {
-              section.scrollIntoView({ behavior: "smooth" });
-            }
-          }, 100);
+    // Si no encontramos el elemento en la pestaña actual, intentar en la otra pestaña
+    const otherTab =
+      currentTab === "system-instructions"
+        ? "documentation"
+        : "system-instructions";
+    setActiveTab(otherTab);
+
+    // Esperar a que se renderice la otra pestaña antes de intentar desplazarse
+    setTimeout(() => {
+      const otherContainer =
+        otherTab === "system-instructions"
+          ? instructionsRef.current
+          : documentationRef.current;
+
+      if (otherContainer) {
+        const targetElement =
+          otherContainer.querySelector(`#${targetId}`) ||
+          otherContainer.querySelector(`[data-heading-id="${targetId}"]`);
+
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: "smooth" });
         }
       }
-    };
-
-    return (
-      <div onClick={handleLinkClick}>
-        <MarkdownRenderer content={processedContent} />
-      </div>
-    );
+    }, 100);
   };
+
+  const renderSystemInstructions = (content: string) => (
+    <div className="space-y-4 pt-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">
+          {t("settings.systemInstructions")}
+        </h3>
+        <div className="flex space-x-2">
+          {isEditingInstructions ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingInstructions(false)}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              {t("settings.done")}
+            </Button>
+          ) : (
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyInstructions}
+              >
+                {isCopied ? (
+                  <Check className="h-4 w-4 mr-2" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                {isCopied ? t("settings.copied") : t("settings.copy")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingInstructions(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                {t("settings.edit")}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isEditingInstructions ? (
+        <div className="space-y-4">
+          <div className="bg-blue-100 dark:bg-blue-900 border-2 border-blue-500 rounded-md p-4 mb-4">
+            <h4 className="text-blue-800 dark:text-blue-200 font-bold text-base mb-2 flex items-center">
+              <Link className="h-5 w-5 mr-2" />
+              Crea enlaces a la documentación desde aquí
+            </h4>
+            <p className="text-blue-700 dark:text-blue-300 text-sm mb-2">
+              Desde las instrucciones del sistema puedes crear enlaces a
+              cualquier sección de la documentación:
+            </p>
+            <ol className="list-decimal ml-5 text-blue-700 dark:text-blue-300 text-sm">
+              <li className="mb-1">
+                Escribe el texto que quieres que sea el enlace
+              </li>
+              <li className="mb-1">Selecciónalo con el cursor</li>
+              <li className="mb-1">
+                Haz clic en el botón{" "}
+                <span className="font-bold">
+                  &quot;Insertar enlace a encabezado&quot;
+                </span>{" "}
+                abajo
+              </li>
+              <li className="mb-1">
+                Selecciona el encabezado de destino en la documentación
+              </li>
+            </ol>
+          </div>
+          <div className="flex justify-end mb-2">
+            <HeadingSelector
+              instructionsHeadings={instructionsHeadings}
+              documentationHeadings={documentationHeadings}
+              onInsertLink={(markdown) => {
+                const textarea = document.activeElement as HTMLTextAreaElement;
+                if (textarea && textarea.tagName.toLowerCase() === "textarea") {
+                  const start = textarea.selectionStart;
+                  const end = textarea.selectionEnd;
+                  const value = textarea.value;
+                  const newValue =
+                    value.substring(0, start) + markdown + value.substring(end);
+                  setAgent({ ...agent, system_instructions: newValue });
+                  // Establecer el cursor después del enlace insertado
+                  setTimeout(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(
+                      start + markdown.length,
+                      start + markdown.length
+                    );
+                  }, 0);
+                } else {
+                  // Si no hay un textarea activo, simplemente añadir al final
+                  setAgent({
+                    ...agent,
+                    system_instructions:
+                      (agent.system_instructions || "") + "\n" + markdown,
+                  });
+                }
+              }}
+            />
+          </div>
+          <Textarea
+            value={content}
+            onChange={(e) =>
+              setAgent({ ...agent, system_instructions: e.target.value })
+            }
+            placeholder={t("settings.systemInstructionsPlaceholder")}
+            className="min-h-[300px] font-mono text-sm"
+          />
+        </div>
+      ) : (
+        <div
+          className="border rounded-md p-4 bg-muted/30 min-h-[300px] overflow-auto"
+          ref={instructionsRef}
+        >
+          <MarkdownRenderer
+            content={content}
+            containerRef={instructionsRef as React.RefObject<HTMLDivElement>}
+            onLinkClick={handleInternalLinkClick}
+            onHeadingsFound={setInstructionsHeadings}
+          />
+        </div>
+      )}
+
+      <div className="text-sm text-muted-foreground">
+        <p>{t("settings.systemInstructionsHelp")}</p>
+        <p className="mt-1">{t("settings.crossReferenceHelp")}</p>
+        <div className="mt-2 p-2 border rounded-md bg-blue-50 dark:bg-blue-950">
+          <p className="font-medium text-blue-700 dark:text-blue-300">
+            Guía para crear enlaces entre secciones:
+          </p>
+          <ol className="list-decimal ml-5 mt-1 text-blue-600 dark:text-blue-400">
+            <li>Edita la sección donde quieres añadir el enlace</li>
+            <li>
+              Haz clic en el botón &quot;Insertar enlace a encabezado&quot;
+            </li>
+            <li>Selecciona el encabezado de destino (de cualquier sección)</li>
+            <li>Personaliza el texto del enlace si lo deseas</li>
+            <li>Haz clic en &quot;Insertar enlace&quot;</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDocumentation = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">{t("settings.documentation")}</h3>
+        <div className="flex space-x-2">
+          {isEditingDocumentation ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                setIsEditingDocumentation(false);
+                // Guardar los cambios en la documentación
+                try {
+                  setIsSubmitting(true);
+                  await updateAgent({
+                    id: agent.id,
+                    documentation: agent.documentation,
+                  });
+                  toast.success(t("settings.agentUpdated"));
+                } catch (error) {
+                  console.error("Error updating documentation:", error);
+                  toast.error(t("settings.errorUpdatingAgent"));
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              {t("settings.done")}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingDocumentation(true)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {t("settings.edit")}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {isEditingDocumentation ? (
+        <div className="space-y-4">
+          <div className="flex justify-end mb-2">
+            <HeadingSelector
+              instructionsHeadings={instructionsHeadings}
+              documentationHeadings={documentationHeadings}
+              onInsertLink={(markdown) => {
+                const textarea = document.activeElement as HTMLTextAreaElement;
+                if (textarea && textarea.tagName.toLowerCase() === "textarea") {
+                  const start = textarea.selectionStart;
+                  const end = textarea.selectionEnd;
+                  const value = textarea.value;
+                  const newValue =
+                    value.substring(0, start) + markdown + value.substring(end);
+                  setAgent({ ...agent, documentation: newValue });
+                  // Establecer el cursor después del enlace insertado
+                  setTimeout(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(
+                      start + markdown.length,
+                      start + markdown.length
+                    );
+                  }, 0);
+                } else {
+                  // Si no hay un textarea activo, simplemente añadir al final
+                  setAgent({
+                    ...agent,
+                    documentation:
+                      (agent.documentation || "") + "\n" + markdown,
+                  });
+                }
+              }}
+            />
+          </div>
+          <div className="border rounded-md p-2 bg-muted/10 mb-2">
+            <p className="text-sm text-muted-foreground mb-2">
+              <span className="font-semibold">Tip:</span> Usa el botón
+              &quot;Insertar enlace a encabezado&quot; para crear enlaces entre
+              secciones.
+            </p>
+          </div>
+          <Textarea
+            value={agent.documentation || ""}
+            onChange={(e) =>
+              setAgent({ ...agent, documentation: e.target.value })
+            }
+            placeholder={t("settings.documentationPlaceholder")}
+            className="min-h-[300px] font-mono text-sm"
+          />
+        </div>
+      ) : (
+        <div
+          className="border rounded-md p-4 bg-muted/30 min-h-[300px] overflow-auto"
+          ref={documentationRef}
+        >
+          <MarkdownRenderer
+            content={agent.documentation || ""}
+            containerRef={documentationRef as React.RefObject<HTMLDivElement>}
+            onLinkClick={handleInternalLinkClick}
+            onHeadingsFound={setDocumentationHeadings}
+          />
+        </div>
+      )}
+
+      <div className="text-sm text-muted-foreground">
+        <p>{t("settings.documentationHelp")}</p>
+        <p className="mt-1">{t("settings.crossReferenceHelp")}</p>
+        <div className="mt-2 p-2 border rounded-md bg-blue-50 dark:bg-blue-950">
+          <p className="font-medium text-blue-700 dark:text-blue-300">
+            Guía para crear enlaces entre secciones:
+          </p>
+          <ol className="list-decimal ml-5 mt-1 text-blue-600 dark:text-blue-400">
+            <li>Edita la sección donde quieres añadir el enlace</li>
+            <li>
+              Haz clic en el botón &quot;Insertar enlace a encabezado&quot;
+            </li>
+            <li>Selecciona el encabezado de destino (de cualquier sección)</li>
+            <li>Personaliza el texto del enlace si lo deseas</li>
+            <li>Haz clic en &quot;Insertar enlace&quot;</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderBasicSettings = () => (
     <div className="space-y-8">
@@ -830,484 +1145,7 @@ _"Limited-time offer! Schedule your appointment today and keep your 10% OFF labo
         </TabsContent>
 
         <TabsContent value="documentation" className="mt-0">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI Configuration Guide</CardTitle>
-                <CardDescription>
-                  Comprehensive documentation of the AI agent&apos;s
-                  capabilities, settings, and best practices
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                <div id="welcome-message" className="space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    Welcome Message Configuration
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      The welcome message serves as the crucial first point of
-                      contact with users. Configure it to establish trust and
-                      gather essential information efficiently.
-                    </p>
-                    <div className="pl-4 space-y-4">
-                      <div>
-                        <h4 className="font-medium">Standard Bot Chat:</h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Pre-optimized template designed for maximum lead
-                            conversion
-                          </li>
-                          <li>
-                            Structured to collect vehicle information
-                            systematically:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Year of the vehicle</li>
-                              <li>Make and model</li>
-                              <li>Specific issue or symptoms</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Includes trust-building elements:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Professional greeting</li>
-                              <li>Service expertise highlights</li>
-                              <li>Clear value proposition</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">
-                          Custom Message Configuration:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Full Markdown support for rich formatting:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Bold and italic text for emphasis</li>
-                              <li>
-                                Bullet points for clear information structure
-                              </li>
-                              <li>Headers for content organization</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Dynamic content capabilities:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Custom variables for personalization</li>
-                              <li>
-                                Conditional messaging based on user source
-                              </li>
-                              <li>Multi-language support</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Best practices for engagement:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>
-                                Keep messages concise (2-3 paragraphs max)
-                              </li>
-                              <li>Use emojis strategically for warmth</li>
-                              <li>Include clear call-to-action</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="lead-strategy" className="space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    Lead Qualification Strategy
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Choose between two sophisticated lead qualification
-                      approaches, each designed for specific business needs and
-                      customer interactions.
-                    </p>
-                    <div className="pl-4 space-y-6">
-                      <div>
-                        <h4 className="font-medium">
-                          Smart Targeting Strategy:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Adaptive Information Gathering:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>
-                                Progressive profiling based on user responses
-                              </li>
-                              <li>Dynamic question sequencing</li>
-                              <li>Context-aware follow-up questions</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Intelligent Lead Scoring:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Multi-factor evaluation system</li>
-                              <li>Behavioral analysis</li>
-                              <li>Purchase intent indicators</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Conversion Optimization:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Personalized engagement paths</li>
-                              <li>Timing-based interventions</li>
-                              <li>Custom offer triggers</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">
-                          Strict Filtering Strategy:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Mandatory Information Requirements:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Complete vehicle specifications</li>
-                              <li>Verified contact information</li>
-                              <li>Service history documentation</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Quality Control Measures:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Data validation checks</li>
-                              <li>Duplicate lead detection</li>
-                              <li>Fraud prevention filters</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Business Rules Engine:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Custom qualification criteria</li>
-                              <li>Industry-specific requirements</li>
-                              <li>Compliance checkpoints</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="pricing" className="space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    Pricing Sources Configuration
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Configure how the AI generates and presents pricing
-                      information using multiple data sources and intelligent
-                      pricing strategies.
-                    </p>
-                    <div className="pl-4 space-y-6">
-                      <div>
-                        <h4 className="font-medium">Dcitelly Integration:</h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Real-time Price Synchronization:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>
-                                Direct integration with shop management system
-                              </li>
-                              <li>Automatic price updates</li>
-                              <li>Inventory-aware pricing</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Service-specific Pricing:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Labor rate calculations</li>
-                              <li>Parts pricing integration</li>
-                              <li>Package deal configuration</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Dynamic Pricing Rules:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Volume discounts</li>
-                              <li>Seasonal adjustments</li>
-                              <li>Loyalty program integration</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">AI-Recommended Pricing:</h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Market Analysis Engine:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Competitive price monitoring</li>
-                              <li>Regional market trends</li>
-                              <li>Demand-based pricing</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Smart Price Optimization:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Service complexity factors</li>
-                              <li>Customer segment analysis</li>
-                              <li>Profit margin optimization</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Price Presentation Strategies:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Range-based estimates</li>
-                              <li>Tiered pricing options</li>
-                              <li>Value proposition highlighting</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="special-offer" className="space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    Special Offers Configuration
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Design and implement strategic promotional offers to drive
-                      conversions and customer engagement.
-                    </p>
-                    <div className="pl-4 space-y-4">
-                      <div>
-                        <h4 className="font-medium">
-                          Offer Types and Structure:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Standard Discount Options:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Percentage-based discounts</li>
-                              <li>Fixed amount deductions</li>
-                              <li>Service package bundles</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Time-Sensitive Promotions:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Limited-time offers</li>
-                              <li>Flash sale configurations</li>
-                              <li>Seasonal promotion templates</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Customer-Specific Offers:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>First-time customer specials</li>
-                              <li>Loyalty program rewards</li>
-                              <li>Referral incentives</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">
-                          Offer Management System:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Automation Features:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Scheduled offer activation</li>
-                              <li>Dynamic pricing adjustments</li>
-                              <li>Inventory-linked promotions</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Tracking and Analytics:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Offer performance metrics</li>
-                              <li>Conversion rate analysis</li>
-                              <li>ROI calculations</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Integration Capabilities:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>CRM system synchronization</li>
-                              <li>Booking system integration</li>
-                              <li>Payment gateway compatibility</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="auto-assign" className="space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    Auto-Assign Leads System
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Advanced lead distribution system that automatically
-                      matches customers with the most suitable service
-                      providers.
-                    </p>
-                    <div className="pl-4 space-y-6">
-                      <div>
-                        <h4 className="font-medium">
-                          Assignment Criteria Engine:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Location-Based Matching:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>ZIP code proximity analysis</li>
-                              <li>Service area mapping</li>
-                              <li>Travel time calculations</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Shop Quality Metrics:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Google Maps ratings integration</li>
-                              <li>Review sentiment analysis</li>
-                              <li>Historical performance data</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Capacity Management:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Real-time availability tracking</li>
-                              <li>Workload distribution</li>
-                              <li>Specialty service matching</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">
-                          Assignment Process Flow:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Initial Assessment:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Service type categorization</li>
-                              <li>Urgency level evaluation</li>
-                              <li>Customer preferences analysis</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Shop Selection Algorithm:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Multi-factor scoring system</li>
-                              <li>Weighted criteria evaluation</li>
-                              <li>Dynamic ranking adjustments</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Assignment Confirmation:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Automated notifications</li>
-                              <li>Shop acceptance tracking</li>
-                              <li>Customer confirmation system</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div id="auto-respond" className="space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    AI Auto-Response System
-                  </h3>
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Intelligent automated response system that maintains
-                      engagement and drives conversions through timely
-                      interactions.
-                    </p>
-                    <div className="pl-4 space-y-6">
-                      <div>
-                        <h4 className="font-medium">
-                          Response Trigger System:
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Time-Based Triggers:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>3-minute inactivity follow-up</li>
-                              <li>3-hour booking reminder</li>
-                              <li>24-hour final offer</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Behavior-Based Triggers:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Cart abandonment recovery</li>
-                              <li>Quote review prompts</li>
-                              <li>Service inquiry follow-ups</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Context-Aware Responses:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Customer intent detection</li>
-                              <li>Conversation stage awareness</li>
-                              <li>Service type customization</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium">Response Management:</h4>
-                        <ul className="list-disc pl-4 space-y-2 text-muted-foreground">
-                          <li>
-                            Message Customization:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Dynamic content insertion</li>
-                              <li>Personalization tokens</li>
-                              <li>Multi-language support</li>
-                            </ul>
-                          </li>
-                          <li>
-                            Response Analytics:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>Engagement tracking</li>
-                              <li>Response rate analysis</li>
-                              <li>Conversion attribution</li>
-                            </ul>
-                          </li>
-                          <li>
-                            System Integration:
-                            <ul className="list-disc pl-6 mt-1">
-                              <li>CRM data synchronization</li>
-                              <li>Booking system connection</li>
-                              <li>Communication channel integration</li>
-                            </ul>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {renderDocumentation()}
         </TabsContent>
 
         <TabsContent value="settings" className="mt-0">

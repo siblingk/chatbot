@@ -32,6 +32,7 @@ export interface Agent {
   is_active: boolean;
   target_role: "user" | "shop" | "admin" | "both";
   target_agent_id?: string;
+  documentation?: string;
 }
 
 export interface AgentConfig {

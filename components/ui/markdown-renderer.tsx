@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -8,22 +8,91 @@ import type { Components } from "react-markdown";
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  containerRef?: React.RefObject<HTMLDivElement>;
+  onLinkClick?: (href: string) => void;
+  onHeadingsFound?: (
+    headings: { id: string; text: string; level: number }[]
+  ) => void;
 }
 
 export function MarkdownRenderer({
   content,
   className,
+  containerRef,
+  onLinkClick,
+  onHeadingsFound,
 }: MarkdownRendererProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const localRef = useRef<HTMLDivElement>(null);
+  const ref = containerRef || localRef;
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Extraer encabezados del contenido
+  useEffect(() => {
+    if (content && onHeadingsFound) {
+      const extractedHeadings: { id: string; text: string; level: number }[] =
+        [];
+
+      // Buscar encabezados con regex
+      const headingRegex = /^(#{1,6})\s+(.+?)(?:\s+\{#([^}]+)\})?$/gm;
+      let match;
+
+      while ((match = headingRegex.exec(content)) !== null) {
+        const level = match[1].length;
+        const text = match[2].trim();
+        const customId =
+          match[3] ||
+          text
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]/g, "");
+
+        extractedHeadings.push({
+          id: customId,
+          text,
+          level,
+        });
+      }
+
+      onHeadingsFound(extractedHeadings);
+    }
+  }, [content, onHeadingsFound]);
+
+  // Función para manejar clics en enlaces internos
+  const handleLinkClick = (href: string, event: React.MouseEvent) => {
+    if (href.startsWith("#")) {
+      event.preventDefault();
+
+      // Si hay un manejador de clics personalizado, úsalo
+      if (onLinkClick) {
+        onLinkClick(href);
+        return;
+      }
+
+      // De lo contrario, intenta encontrar el elemento en el contenedor actual
+      const targetId = href.substring(1);
+      const container = ref.current;
+
+      if (container) {
+        // Buscar elementos con id o con data-heading-id
+        const targetElement =
+          container.querySelector(`#${targetId}`) ||
+          container.querySelector(`[data-heading-id="${targetId}"]`);
+
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+    }
+  };
+
   // Si no está montado, mostrar el contenido como texto plano con saltos de línea
   if (!isMounted) {
     return (
-      <div className={className}>
+      <div className={className} ref={ref}>
         <p className="whitespace-pre-wrap break-words">{content}</p>
       </div>
     );
@@ -31,21 +100,63 @@ export function MarkdownRenderer({
 
   // Componentes personalizados para ReactMarkdown
   const markdownComponents: Components = {
-    h1: ({ children, ...props }) => (
-      <h1 className="text-xl font-bold mb-2" {...props}>
-        {children}
-      </h1>
-    ),
-    h2: ({ children, ...props }) => (
-      <h2 className="text-lg font-bold mb-2" {...props}>
-        {children}
-      </h2>
-    ),
-    h3: ({ children, ...props }) => (
-      <h3 className="text-md font-bold mb-1" {...props}>
-        {children}
-      </h3>
-    ),
+    h1: ({ children, ...props }) => {
+      const id =
+        typeof children === "string"
+          ? children
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "")
+          : "";
+      return (
+        <h1
+          className="text-xl font-bold mb-2"
+          id={id}
+          data-heading-id={id}
+          {...props}
+        >
+          {children}
+        </h1>
+      );
+    },
+    h2: ({ children, ...props }) => {
+      const id =
+        typeof children === "string"
+          ? children
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "")
+          : "";
+      return (
+        <h2
+          className="text-lg font-bold mb-2"
+          id={id}
+          data-heading-id={id}
+          {...props}
+        >
+          {children}
+        </h2>
+      );
+    },
+    h3: ({ children, ...props }) => {
+      const id =
+        typeof children === "string"
+          ? children
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "")
+          : "";
+      return (
+        <h3
+          className="text-md font-bold mb-1"
+          id={id}
+          data-heading-id={id}
+          {...props}
+        >
+          {children}
+        </h3>
+      );
+    },
     p: ({ children, ...props }) => (
       <p className="mb-2" {...props}>
         {children}
@@ -66,17 +177,31 @@ export function MarkdownRenderer({
         {children}
       </li>
     ),
-    a: ({ children, href, ...props }) => (
-      <a
-        href={href}
-        className="text-primary underline"
-        target="_blank"
-        rel="noopener noreferrer"
-        {...props}
-      >
-        {children}
-      </a>
-    ),
+    a: ({ children, href, ...props }) => {
+      // Determinar si es un enlace interno o externo
+      const isInternalLink = href?.startsWith("#");
+
+      return isInternalLink ? (
+        <a
+          href={href}
+          className="text-primary underline cursor-pointer"
+          onClick={(e) => handleLinkClick(href || "", e)}
+          {...props}
+        >
+          {children}
+        </a>
+      ) : (
+        <a
+          href={href}
+          className="text-primary underline"
+          target="_blank"
+          rel="noopener noreferrer"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
     strong: ({ children, ...props }) => (
       <strong className="font-bold" {...props}>
         {children}
@@ -161,7 +286,7 @@ export function MarkdownRenderer({
 
   // Cuando está montado, renderizar como Markdown
   return (
-    <div className={className}>
+    <div className={className} ref={ref}>
       <ReactMarkdown
         components={markdownComponents}
         remarkPlugins={[remarkGfm]}

@@ -22,19 +22,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
 
   useEffect(() => {
-    // Obtener la sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsEmailVerified(session?.user?.email_confirmed_at != null);
+    // Obtener el usuario autenticado de forma segura
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user ?? null);
+      setIsEmailVerified(user?.email_confirmed_at != null);
       setLoading(false);
     });
 
     // Escuchar cambios en la autenticación
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setIsEmailVerified(session?.user?.email_confirmed_at != null);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Cuando cambia el estado de autenticación, verificar el usuario con getUser()
+      if (session) {
+        const { data } = await supabase.auth.getUser();
+        setUser(data.user);
+        setIsEmailVerified(data.user?.email_confirmed_at != null);
+      } else {
+        setUser(null);
+        setIsEmailVerified(false);
+      }
     });
 
     return () => subscription.unsubscribe();

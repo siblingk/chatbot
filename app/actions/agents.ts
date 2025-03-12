@@ -126,6 +126,7 @@ export async function updateAgent(agent: Partial<Agent>) {
     is_active: agent.is_active !== undefined ? agent.is_active : true,
     target_role: agent.target_role || "both",
     target_agent_id: agent.target_agent_id || null,
+    documentation: agent.documentation || null,
   };
 
   // Si estamos actualizando un agente existente (tiene ID)

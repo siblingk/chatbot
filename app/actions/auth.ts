@@ -14,19 +14,17 @@ export async function getUserRole(): Promise<{
   const supabase = await createClient(cookieStore);
 
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const { data, error: userError } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
-      console.log("No session or user ID found");
+    if (userError || !data.user?.id) {
+      console.log("No user found:", userError?.message);
       return { role: null, isAdmin: false, isShop: false };
     }
 
     const { data: userData, error } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", data.user.id)
       .single();
 
     if (error) {
@@ -92,8 +90,12 @@ export async function signOut() {
 export async function getUser() {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.user || null;
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("Error getting user:", error.message);
+    return null;
+  }
+
+  return data.user || null;
 }

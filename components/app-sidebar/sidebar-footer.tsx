@@ -69,7 +69,7 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem asChild>
-                    <Link href={`/agents/${user?.id}`}>
+                    <Link href={`/agents`}>
                       <Bot className="mr-2 h-4 w-4" />
                       {t("settings.agents")}
                     </Link>

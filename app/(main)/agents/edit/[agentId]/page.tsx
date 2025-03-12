@@ -41,7 +41,6 @@ import {
   Check,
   FileText,
   Store,
-  Link,
 } from "lucide-react";
 import AgentChatPreview from "@/components/chat/agent-chat-preview";
 import { PreviewUrlGenerator } from "@/components/settings/preview-url-generator";
@@ -57,7 +56,6 @@ import {
 } from "@/components/ui/dialog";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { HeadingSelector } from "@/components/ui/heading-selector";
 
 export default function EditAgentPage() {
   const params = useParams();
@@ -240,14 +238,6 @@ El sistema envía los siguientes mensajes automáticos:
   const instructionsRef = useRef<HTMLDivElement>(null);
   const documentationRef = useRef<HTMLDivElement>(null);
 
-  // Estado para almacenar los encabezados encontrados
-  const [instructionsHeadings, setInstructionsHeadings] = useState<
-    { id: string; text: string; level: number }[]
-  >([]);
-  const [documentationHeadings, setDocumentationHeadings] = useState<
-    { id: string; text: string; level: number }[]
-  >([]);
-
   useEffect(() => {
     const fetchAgent = async () => {
       if (!user) return;
@@ -286,10 +276,18 @@ El sistema envía los siguientes mensajes automáticos:
 
   // Verificar si el usuario es administrador o si está accediendo a su propio agente
   useEffect(() => {
-    if (user && !isAdmin && user.id !== params.userId) {
-      router.push("/");
+    // Solo redirigir si el usuario no es administrador y no es el propietario del agente
+    // Y asegurarse de que el usuario esté autenticado antes de hacer la verificación
+    if (
+      user &&
+      !isAdmin &&
+      agent &&
+      agent.user_id &&
+      user.id !== agent.user_id
+    ) {
+      router.push("/agents");
     }
-  }, [params.userId, user, isAdmin, router]);
+  }, [user, isAdmin, agent, router]);
 
   const handleUpdateAgent = async () => {
     try {
@@ -390,147 +388,15 @@ El sistema envía los siguientes mensajes automáticos:
 
   const renderSystemInstructions = (content: string) => (
     <div className="space-y-4 pt-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">
-          {t("settings.systemInstructions")}
-        </h3>
-        <div className="flex space-x-2">
-          {isEditingInstructions ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditingInstructions(false)}
-            >
-              <Check className="h-4 w-4 mr-2" />
-              {t("settings.done")}
-            </Button>
-          ) : (
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyInstructions}
-              >
-                {isCopied ? (
-                  <Check className="h-4 w-4 mr-2" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-2" />
-                )}
-                {isCopied ? t("settings.copied") : t("settings.copy")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditingInstructions(true)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                {t("settings.edit")}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {isEditingInstructions ? (
-        <div className="space-y-4">
-          <div className="bg-blue-100 dark:bg-blue-900 border-2 border-blue-500 rounded-md p-4 mb-4">
-            <h4 className="text-blue-800 dark:text-blue-200 font-bold text-base mb-2 flex items-center">
-              <Link className="h-5 w-5 mr-2" />
-              Crea enlaces a la documentación desde aquí
-            </h4>
-            <p className="text-blue-700 dark:text-blue-300 text-sm mb-2">
-              Desde las instrucciones del sistema puedes crear enlaces a
-              cualquier sección de la documentación:
-            </p>
-            <ol className="list-decimal ml-5 text-blue-700 dark:text-blue-300 text-sm">
-              <li className="mb-1">
-                Escribe el texto que quieres que sea el enlace
-              </li>
-              <li className="mb-1">Selecciónalo con el cursor</li>
-              <li className="mb-1">
-                Haz clic en el botón{" "}
-                <span className="font-bold">
-                  &quot;Insertar enlace a encabezado&quot;
-                </span>{" "}
-                abajo
-              </li>
-              <li className="mb-1">
-                Selecciona el encabezado de destino en la documentación
-              </li>
-            </ol>
-          </div>
-          <div className="flex justify-end mb-2">
-            <HeadingSelector
-              instructionsHeadings={instructionsHeadings}
-              documentationHeadings={documentationHeadings}
-              onInsertLink={(markdown) => {
-                const textarea = document.activeElement as HTMLTextAreaElement;
-                if (textarea && textarea.tagName.toLowerCase() === "textarea") {
-                  const start = textarea.selectionStart;
-                  const end = textarea.selectionEnd;
-                  const value = textarea.value;
-                  const newValue =
-                    value.substring(0, start) + markdown + value.substring(end);
-                  setAgent({ ...agent, system_instructions: newValue });
-                  // Establecer el cursor después del enlace insertado
-                  setTimeout(() => {
-                    textarea.focus();
-                    textarea.setSelectionRange(
-                      start + markdown.length,
-                      start + markdown.length
-                    );
-                  }, 0);
-                } else {
-                  // Si no hay un textarea activo, simplemente añadir al final
-                  setAgent({
-                    ...agent,
-                    system_instructions:
-                      (agent.system_instructions || "") + "\n" + markdown,
-                  });
-                }
-              }}
-            />
-          </div>
-          <Textarea
-            value={content}
-            onChange={(e) =>
-              setAgent({ ...agent, system_instructions: e.target.value })
-            }
-            placeholder={t("settings.systemInstructionsPlaceholder")}
-            className="min-h-[300px] font-mono text-sm"
-          />
-        </div>
-      ) : (
-        <div
-          className="border rounded-md p-4 bg-muted/30 min-h-[300px] overflow-auto"
-          ref={instructionsRef}
-        >
-          <MarkdownRenderer
-            content={content}
-            containerRef={instructionsRef as React.RefObject<HTMLDivElement>}
-            onLinkClick={handleInternalLinkClick}
-            onHeadingsFound={setInstructionsHeadings}
-          />
-        </div>
-      )}
-
-      <div className="text-sm text-muted-foreground">
-        <p>{t("settings.systemInstructionsHelp")}</p>
-        <p className="mt-1">{t("settings.crossReferenceHelp")}</p>
-        <div className="mt-2 p-2 border rounded-md bg-blue-50 dark:bg-blue-950">
-          <p className="font-medium text-blue-700 dark:text-blue-300">
-            Guía para crear enlaces entre secciones:
-          </p>
-          <ol className="list-decimal ml-5 mt-1 text-blue-600 dark:text-blue-400">
-            <li>Edita la sección donde quieres añadir el enlace</li>
-            <li>
-              Haz clic en el botón &quot;Insertar enlace a encabezado&quot;
-            </li>
-            <li>Selecciona el encabezado de destino (de cualquier sección)</li>
-            <li>Personaliza el texto del enlace si lo deseas</li>
-            <li>Haz clic en &quot;Insertar enlace&quot;</li>
-          </ol>
-        </div>
+      <div
+        className="bg-muted/30 min-h-[300px] overflow-auto"
+        ref={instructionsRef}
+      >
+        <MarkdownRenderer
+          content={content}
+          containerRef={instructionsRef as React.RefObject<HTMLDivElement>}
+          onLinkClick={handleInternalLinkClick}
+        />
       </div>
     </div>
   );
@@ -580,45 +446,6 @@ El sistema envía los siguientes mensajes automáticos:
 
       {isEditingDocumentation ? (
         <div className="space-y-4">
-          <div className="flex justify-end mb-2">
-            <HeadingSelector
-              instructionsHeadings={instructionsHeadings}
-              documentationHeadings={documentationHeadings}
-              onInsertLink={(markdown) => {
-                const textarea = document.activeElement as HTMLTextAreaElement;
-                if (textarea && textarea.tagName.toLowerCase() === "textarea") {
-                  const start = textarea.selectionStart;
-                  const end = textarea.selectionEnd;
-                  const value = textarea.value;
-                  const newValue =
-                    value.substring(0, start) + markdown + value.substring(end);
-                  setAgent({ ...agent, documentation: newValue });
-                  // Establecer el cursor después del enlace insertado
-                  setTimeout(() => {
-                    textarea.focus();
-                    textarea.setSelectionRange(
-                      start + markdown.length,
-                      start + markdown.length
-                    );
-                  }, 0);
-                } else {
-                  // Si no hay un textarea activo, simplemente añadir al final
-                  setAgent({
-                    ...agent,
-                    documentation:
-                      (agent.documentation || "") + "\n" + markdown,
-                  });
-                }
-              }}
-            />
-          </div>
-          <div className="border rounded-md p-2 bg-muted/10 mb-2">
-            <p className="text-sm text-muted-foreground mb-2">
-              <span className="font-semibold">Tip:</span> Usa el botón
-              &quot;Insertar enlace a encabezado&quot; para crear enlaces entre
-              secciones.
-            </p>
-          </div>
           <Textarea
             value={agent.documentation || ""}
             onChange={(e) =>
@@ -630,36 +457,32 @@ El sistema envía los siguientes mensajes automáticos:
         </div>
       ) : (
         <div
-          className="border rounded-md p-4 bg-muted/30 min-h-[300px] overflow-auto"
+          className="border rounded-md p-4 bg-sidebar min-h-[300px] overflow-auto shadow-sm"
           ref={documentationRef}
         >
-          <MarkdownRenderer
-            content={agent.documentation || ""}
-            containerRef={documentationRef as React.RefObject<HTMLDivElement>}
-            onLinkClick={handleInternalLinkClick}
-            onHeadingsFound={setDocumentationHeadings}
-          />
+          {agent.documentation ? (
+            <MarkdownRenderer
+              content={agent.documentation || ""}
+              containerRef={documentationRef as React.RefObject<HTMLDivElement>}
+              onLinkClick={handleInternalLinkClick}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <FileText className="h-12 w-12 mb-2 opacity-20" />
+              <p>{t("settings.noDocumentation")}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                onClick={() => setIsEditingDocumentation(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                {t("settings.edit")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
-
-      <div className="text-sm text-muted-foreground">
-        <p>{t("settings.documentationHelp")}</p>
-        <p className="mt-1">{t("settings.crossReferenceHelp")}</p>
-        <div className="mt-2 p-2 border rounded-md bg-blue-50 dark:bg-blue-950">
-          <p className="font-medium text-blue-700 dark:text-blue-300">
-            Guía para crear enlaces entre secciones:
-          </p>
-          <ol className="list-decimal ml-5 mt-1 text-blue-600 dark:text-blue-400">
-            <li>Edita la sección donde quieres añadir el enlace</li>
-            <li>
-              Haz clic en el botón &quot;Insertar enlace a encabezado&quot;
-            </li>
-            <li>Selecciona el encabezado de destino (de cualquier sección)</li>
-            <li>Personaliza el texto del enlace si lo deseas</li>
-            <li>Haz clic en &quot;Insertar enlace&quot;</li>
-          </ol>
-        </div>
-      </div>
     </div>
   );
 

@@ -4,6 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
+import { Check, Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useTranslations } from "next-intl";
 
 interface MarkdownRendererProps {
   content: string;
@@ -22,9 +31,11 @@ export function MarkdownRenderer({
   onLinkClick,
   onHeadingsFound,
 }: MarkdownRendererProps) {
+  const t = useTranslations("settings");
   const [isMounted, setIsMounted] = useState(false);
   const localRef = useRef<HTMLDivElement>(null);
   const ref = containerRef || localRef;
+  const [copiedHeadingId, setCopiedHeadingId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -89,6 +100,14 @@ export function MarkdownRenderer({
     }
   };
 
+  // Función para copiar el enlace de un encabezado
+  const copyHeadingLink = (id: string) => {
+    const markdownLink = `[${id}](#${id})`;
+    navigator.clipboard.writeText(markdownLink);
+    setCopiedHeadingId(id);
+    setTimeout(() => setCopiedHeadingId(null), 2000);
+  };
+
   // Si no está montado, mostrar el contenido como texto plano con saltos de línea
   if (!isMounted) {
     return (
@@ -109,14 +128,37 @@ export function MarkdownRenderer({
               .replace(/[^\w-]/g, "")
           : "";
       return (
-        <h1
-          className="text-xl font-bold mb-2"
-          id={id}
-          data-heading-id={id}
-          {...props}
-        >
-          {children}
-        </h1>
+        <div className="group flex items-center gap-2 mb-2">
+          <h1
+            className="text-2xl font-bold"
+            id={id}
+            data-heading-id={id}
+            {...props}
+          >
+            {children}
+          </h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyHeadingLink(id)}
+                >
+                  {copiedHeadingId === id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {copiedHeadingId === id ? t("copied") : t("copyHeadingLink")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       );
     },
     h2: ({ children, ...props }) => {
@@ -128,14 +170,37 @@ export function MarkdownRenderer({
               .replace(/[^\w-]/g, "")
           : "";
       return (
-        <h2
-          className="text-lg font-bold mb-2"
-          id={id}
-          data-heading-id={id}
-          {...props}
-        >
-          {children}
-        </h2>
+        <div className="group flex items-center gap-2 mb-2">
+          <h2
+            className="text-xl font-bold"
+            id={id}
+            data-heading-id={id}
+            {...props}
+          >
+            {children}
+          </h2>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyHeadingLink(id)}
+                >
+                  {copiedHeadingId === id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {copiedHeadingId === id ? t("copied") : t("copyHeadingLink")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       );
     },
     h3: ({ children, ...props }) => {
@@ -147,14 +212,163 @@ export function MarkdownRenderer({
               .replace(/[^\w-]/g, "")
           : "";
       return (
-        <h3
-          className="text-md font-bold mb-1"
-          id={id}
-          data-heading-id={id}
-          {...props}
-        >
-          {children}
-        </h3>
+        <div className="group flex items-center gap-2 mb-1">
+          <h3
+            className="text-lg font-bold"
+            id={id}
+            data-heading-id={id}
+            {...props}
+          >
+            {children}
+          </h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyHeadingLink(id)}
+                >
+                  {copiedHeadingId === id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {copiedHeadingId === id ? t("copied") : t("copyHeadingLink")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      );
+    },
+    h4: ({ children, ...props }) => {
+      const id =
+        typeof children === "string"
+          ? children
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "")
+          : "";
+      return (
+        <div className="group flex items-center gap-2 mb-1">
+          <h4
+            className="text-base font-semibold"
+            id={id}
+            data-heading-id={id}
+            {...props}
+          >
+            {children}
+          </h4>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyHeadingLink(id)}
+                >
+                  {copiedHeadingId === id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {copiedHeadingId === id ? t("copied") : t("copyHeadingLink")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      );
+    },
+    h5: ({ children, ...props }) => {
+      const id =
+        typeof children === "string"
+          ? children
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "")
+          : "";
+      return (
+        <div className="group flex items-center gap-2 mb-1">
+          <h5
+            className="text-sm font-semibold"
+            id={id}
+            data-heading-id={id}
+            {...props}
+          >
+            {children}
+          </h5>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyHeadingLink(id)}
+                >
+                  {copiedHeadingId === id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {copiedHeadingId === id ? t("copied") : t("copyHeadingLink")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      );
+    },
+    h6: ({ children, ...props }) => {
+      const id =
+        typeof children === "string"
+          ? children
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^\w-]/g, "")
+          : "";
+      return (
+        <div className="group flex items-center gap-2 mb-1">
+          <h6
+            className="text-sm font-medium"
+            id={id}
+            data-heading-id={id}
+            {...props}
+          >
+            {children}
+          </h6>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => copyHeadingLink(id)}
+                >
+                  {copiedHeadingId === id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {copiedHeadingId === id ? t("copied") : t("copyHeadingLink")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       );
     },
     p: ({ children, ...props }) => (

@@ -27,6 +27,7 @@ import {
   Edit,
   Check,
   Link,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -855,13 +856,7 @@ El sistema envía los siguientes mensajes automáticos:
               }}
             />
           </div>
-          <div className="border rounded-md p-2 bg-muted/10 mb-2">
-            <p className="text-sm text-muted-foreground mb-2">
-              <span className="font-semibold">Tip:</span> Usa el botón
-              &quot;Insertar enlace a encabezado&quot; para crear enlaces entre
-              secciones.
-            </p>
-          </div>
+
           <Textarea
             value={newAgent.documentation || ""}
             onChange={(e) =>
@@ -873,36 +868,33 @@ El sistema envía los siguientes mensajes automáticos:
         </div>
       ) : (
         <div
-          className="border rounded-md p-4 bg-muted/30 min-h-[300px] overflow-auto"
+          className="border rounded-md p-4 bg-card min-h-[300px] overflow-auto shadow-sm"
           ref={documentationRef}
         >
-          <MarkdownRenderer
-            content={newAgent.documentation || ""}
-            containerRef={documentationRef as React.RefObject<HTMLDivElement>}
-            onLinkClick={handleInternalLinkClick}
-            onHeadingsFound={setDocumentationHeadings}
-          />
+          {newAgent.documentation ? (
+            <MarkdownRenderer
+              content={newAgent.documentation || ""}
+              containerRef={documentationRef as React.RefObject<HTMLDivElement>}
+              onLinkClick={handleInternalLinkClick}
+              onHeadingsFound={setDocumentationHeadings}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <FileText className="h-12 w-12 mb-2 opacity-20" />
+              <p>{t("settings.noDocumentation")}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                onClick={() => setIsEditingDocumentation(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                {t("settings.edit")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
-
-      <div className="text-sm text-muted-foreground">
-        <p>{t("settings.documentationHelp")}</p>
-        <p className="mt-1">{t("settings.crossReferenceHelp")}</p>
-        <div className="mt-2 p-2 border rounded-md bg-blue-50 dark:bg-blue-950">
-          <p className="font-medium text-blue-700 dark:text-blue-300">
-            Guía para crear enlaces entre secciones:
-          </p>
-          <ol className="list-decimal ml-5 mt-1 text-blue-600 dark:text-blue-400">
-            <li>Edita la sección donde quieres añadir el enlace</li>
-            <li>
-              Haz clic en el botón &quot;Insertar enlace a encabezado&quot;
-            </li>
-            <li>Selecciona el encabezado de destino (de cualquier sección)</li>
-            <li>Personaliza el texto del enlace si lo deseas</li>
-            <li>Haz clic en &quot;Insertar enlace&quot;</li>
-          </ol>
-        </div>
-      </div>
     </div>
   );
 
@@ -1104,35 +1096,6 @@ El sistema envía los siguientes mensajes automáticos:
                           />
                         </div>
                       )}
-
-                      <div className="text-sm text-muted-foreground">
-                        <p>{t("settings.systemInstructionsHelp")}</p>
-                        <p className="mt-1">
-                          {t("settings.crossReferenceHelp")}
-                        </p>
-                        <div className="mt-2 p-2 border rounded-md bg-blue-50 dark:bg-blue-950">
-                          <p className="font-medium text-blue-700 dark:text-blue-300">
-                            Guía para crear enlaces entre secciones:
-                          </p>
-                          <ol className="list-decimal ml-5 mt-1 text-blue-600 dark:text-blue-400">
-                            <li>
-                              Edita la sección donde quieres añadir el enlace
-                            </li>
-                            <li>
-                              Haz clic en el botón &quot;Insertar enlace a
-                              encabezado&quot;
-                            </li>
-                            <li>
-                              Selecciona el encabezado de destino (de cualquier
-                              sección)
-                            </li>
-                            <li>
-                              Personaliza el texto del enlace si lo deseas
-                            </li>
-                            <li>Haz clic en &quot;Insertar enlace&quot;</li>
-                          </ol>
-                        </div>
-                      </div>
                     </div>
                   )}
 

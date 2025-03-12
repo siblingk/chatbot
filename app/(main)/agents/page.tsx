@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { getAgents, deleteAgent, updateAgent } from "@/app/actions/agents";
 import { Agent } from "@/types/agents";
-import { useAuth } from "@/contexts/auth-context";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import { redirect } from "next/navigation";
@@ -17,8 +16,6 @@ import {
   PlusCircle,
   Edit,
   Trash2,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,10 +45,8 @@ import {
 } from "@/components/ui/select";
 
 export default function AgentsPage() {
-  const { userId } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const t = useTranslations("settings");
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +55,8 @@ export default function AgentsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Verificar si el usuario es administrador o si está accediendo a su propia página
-    if (!isAdmin && user?.id !== userId) {
+    // Verificar si el usuario es administrador
+    if (!roleLoading && !isAdmin) {
       redirect("/");
     }
 
@@ -71,13 +66,8 @@ export default function AgentsPage() {
         console.log("Listado - Usuario es admin:", isAdmin);
         console.log("Listado - Obteniendo agentes...");
 
-        // Usar getAgents para todos los usuarios
         // Para administradores: onlyActive=false, filterByRole=false
-        // Para usuarios normales: onlyActive=true, filterByRole=true
-        const agentsData = await getAgents(
-          isAdmin ? false : true, // onlyActive - Para admins, mostrar todos (activos e inactivos)
-          isAdmin ? false : true // filterByRole - Para admins, no filtrar por rol
-        );
+        const agentsData = await getAgents(false, false);
 
         console.log(
           "Listado - Número de agentes encontrados:",
@@ -95,8 +85,10 @@ export default function AgentsPage() {
       }
     };
 
-    fetchAgents();
-  }, [userId, user, isAdmin, t]);
+    if (!roleLoading && isAdmin) {
+      fetchAgents();
+    }
+  }, [isAdmin, roleLoading, t]);
 
   const handleDeleteAgent = async () => {
     try {
@@ -139,7 +131,7 @@ export default function AgentsPage() {
     }
   };
 
-  if (loading) {
+  if (roleLoading || loading) {
     return (
       <div className="container mx-auto py-12 px-4">
         <div className="flex items-center gap-2 mb-8">
@@ -200,12 +192,10 @@ export default function AgentsPage() {
       <div className="flex flex-row md:flex-row md:items-center gap-4 mb-8">
         <Bot className="h-6 w-6 text-primary" />
         <h1 className="text-3xl font-bold">{t("agents")}</h1>
-        {isAdmin && (
-          <Badge variant="outline" className="ml-2 gap-1">
-            <Shield className="h-3 w-3" />
-            {t("adminOnly")}
-          </Badge>
-        )}
+        <Badge variant="outline" className="ml-2 gap-1">
+          <Shield className="h-3 w-3" />
+          {t("adminOnly")}
+        </Badge>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -225,7 +215,7 @@ export default function AgentsPage() {
                 <TableHead>{t("model")}</TableHead>
                 <TableHead>{t("visibility")}</TableHead>
                 <TableHead>{t("agentStatus")}</TableHead>
-                {isAdmin && <TableHead>{t("agentTargetRole")}</TableHead>}
+                <TableHead>{t("agentTargetRole")}</TableHead>
                 <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -248,88 +238,62 @@ export default function AgentsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={agent.is_active ? "default" : "secondary"}>
-                      {agent.is_active ? t("agentActive") : t("agentInactive")}
+                    <Select
+                      value={agent.is_active ? "active" : "inactive"}
+                      onValueChange={(value) => {
+                        handleUpdateAgent({
+                          id: agent.id,
+                          is_active: value === "active",
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500" />
+                            {t("active")}
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="inactive">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-gray-300" />
+                            {t("inactive")}
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        agent.target_role === "both"
+                          ? "default"
+                          : agent.target_role === "shop"
+                          ? "secondary"
+                          : "outline"
+                      }
+                    >
+                      {agent.target_role === "both"
+                        ? t("both")
+                        : agent.target_role === "shop"
+                        ? t("shop")
+                        : t("user")}
                     </Badge>
                   </TableCell>
-                  {isAdmin && (
-                    <TableCell>
-                      <Select
-                        value={agent.target_role || "both"}
-                        onValueChange={(value) => {
-                          const updatedAgent = {
-                            ...agent,
-                            target_role: value as
-                              | "user"
-                              | "shop"
-                              | "admin"
-                              | "both",
-                          };
-                          handleUpdateAgent(updatedAgent);
-                        }}
-                      >
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue>
-                            {t(
-                              `agentTargetRole${
-                                agent.target_role
-                                  ? agent.target_role.charAt(0).toUpperCase() +
-                                    agent.target_role.slice(1)
-                                  : "Both"
-                              }`
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">
-                            {t("agentTargetRoleUser")}
-                          </SelectItem>
-                          <SelectItem value="shop">
-                            {t("agentTargetRoleShop")}
-                          </SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  )}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const updatedAgent = {
-                              ...agent,
-                              is_active: !agent.is_active,
-                            };
-                            handleUpdateAgent(updatedAgent);
-                          }}
-                        >
-                          {agent.is_active ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                          <span className="sr-only">
-                            {agent.is_active
-                              ? t("deactivateAgent")
-                              : t("activateAgent")}
-                          </span>
-                        </Button>
-                      )}
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
-                        onClick={() =>
-                          router.push(`/agents/${userId}/edit/${agent.id}`)
-                        }
+                        onClick={() => router.push(`/agents/edit/${agent.id}`)}
                       >
                         <Edit className="h-4 w-4" />
-                        <span className="sr-only">{t("edit")}</span>
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() => {
                           setCurrentAgent(agent);
@@ -337,7 +301,6 @@ export default function AgentsPage() {
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">{t("delete")}</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -346,39 +309,41 @@ export default function AgentsPage() {
             </TableBody>
           </Table>
         ) : (
-          <div className="text-center py-8 border rounded-md bg-muted/20">
-            <p className="text-muted-foreground">{t("noAgents")}</p>
+          <div className="flex flex-col items-center justify-center py-12 border rounded-lg">
+            <Bot className="h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">{t("noAgentsTitle")}</h2>
+            <p className="text-muted-foreground mb-6 text-center max-w-md">
+              {t("noAgentsDescription")}
+            </p>
             <Button
-              variant="outline"
-              className="mt-4"
               onClick={() => router.push(`/agents/create`)}
+              className="gap-2"
             >
-              <PlusCircle className="h-4 w-4 mr-2" />
+              <PlusCircle className="h-4 w-4" />
               {t("createAgent")}
             </Button>
           </div>
         )}
       </div>
 
-      {/* Diálogo para confirmar eliminación */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("deleteAgent")}</DialogTitle>
-            <DialogDescription>
-              {t("deleteAgentConfirmation", {
-                name: currentAgent?.name || "",
-              })}
-            </DialogDescription>
+            <DialogTitle>{t("deleteAgentTitle")}</DialogTitle>
+            <DialogDescription>{t("deleteAgentDescription")}</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-4">
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
             >
               {t("cancel")}
             </Button>
-            <Button variant="destructive" onClick={handleDeleteAgent}>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAgent}
+              disabled={!currentAgent}
+            >
               {t("delete")}
             </Button>
           </DialogFooter>

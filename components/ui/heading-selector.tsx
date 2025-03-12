@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Link, Hash, Copy, Check } from "lucide-react";
+import { Link, Hash, Copy, Check, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface Heading {
   id: string;
@@ -31,6 +32,7 @@ export function HeadingSelector({
   documentationHeadings,
   onInsertLink,
 }: HeadingSelectorProps) {
+  const t = useTranslations("settings");
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("instructions");
   const [searchTerm, setSearchTerm] = useState("");
@@ -97,7 +99,7 @@ export function HeadingSelector({
       <Button
         key={index}
         variant={selectedHeading?.id === heading.id ? "default" : "ghost"}
-        className={`w-full justify-start text-left ${indentation} mb-1`}
+        className={`w-full justify-start text-left ${indentation} mb-1 hover:bg-muted/50`}
         onClick={() => setSelectedHeading(heading)}
       >
         <Hash className="h-4 w-4 mr-2 opacity-70" />
@@ -114,36 +116,45 @@ export function HeadingSelector({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Link className="h-4 w-4" />
-          Insertar enlace a encabezado
+          {t("insertHeadingLink")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Insertar enlace a encabezado</DialogTitle>
+          <DialogTitle>{t("insertHeadingLinkTitle")}</DialogTitle>
           <DialogDescription>
-            Selecciona un encabezado para crear un enlace interno
+            {t("insertHeadingLinkDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-4">
-          <Input
-            placeholder="Buscar encabezados..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-2"
-          />
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t("searchHeadings")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-2 mb-4">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="grid grid-cols-2 mb-4 w-full">
               <TabsTrigger value="instructions">
-                Instrucciones del Sistema
+                {t("systemInstructions")}
               </TabsTrigger>
-              <TabsTrigger value="documentation">Documentación</TabsTrigger>
+              <TabsTrigger value="documentation">
+                {t("documentation")}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent
               value="instructions"
-              className="max-h-[300px] overflow-y-auto border rounded-md p-2"
+              className="max-h-[300px] overflow-y-auto border rounded-md p-2 bg-muted/10"
             >
               {filteredInstructionsHeadings.length > 0 ? (
                 filteredInstructionsHeadings.map((heading, index) =>
@@ -151,16 +162,14 @@ export function HeadingSelector({
                 )
               ) : (
                 <p className="text-center text-muted-foreground p-4">
-                  {searchTerm
-                    ? "No se encontraron encabezados"
-                    : "No hay encabezados disponibles"}
+                  {searchTerm ? t("noHeadingsFound") : t("noHeadingsAvailable")}
                 </p>
               )}
             </TabsContent>
 
             <TabsContent
               value="documentation"
-              className="max-h-[300px] overflow-y-auto border rounded-md p-2"
+              className="max-h-[300px] overflow-y-auto border rounded-md p-2 bg-muted/10"
             >
               {filteredDocumentationHeadings.length > 0 ? (
                 filteredDocumentationHeadings.map((heading, index) =>
@@ -168,9 +177,7 @@ export function HeadingSelector({
                 )
               ) : (
                 <p className="text-center text-muted-foreground p-4">
-                  {searchTerm
-                    ? "No se encontraron encabezados"
-                    : "No hay encabezados disponibles"}
+                  {searchTerm ? t("noHeadingsFound") : t("noHeadingsAvailable")}
                 </p>
               )}
             </TabsContent>
@@ -180,7 +187,7 @@ export function HeadingSelector({
             <div className="space-y-4 mt-4 border-t pt-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Texto del enlace (opcional)
+                  {t("linkText")}
                 </label>
                 <Input
                   placeholder={selectedHeading.text}
@@ -191,7 +198,7 @@ export function HeadingSelector({
 
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Vista previa del enlace
+                  {t("linkPreview")}
                 </label>
                 <div className="p-2 bg-muted rounded-md font-mono text-sm">
                   {generateMarkdown()}
@@ -205,9 +212,9 @@ export function HeadingSelector({
                   ) : (
                     <Copy className="h-4 w-4 mr-2" />
                   )}
-                  {copied ? "Copiado" : "Copiar"}
+                  {copied ? t("copied") : t("copy")}
                 </Button>
-                <Button onClick={handleInsertLink}>Insertar enlace</Button>
+                <Button onClick={handleInsertLink}>{t("insertLink")}</Button>
               </div>
             </div>
           )}

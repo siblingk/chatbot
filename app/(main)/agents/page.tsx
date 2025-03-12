@@ -267,21 +267,24 @@ export default function AgentsPage() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={
-                        agent.target_role === "both"
-                          ? "default"
-                          : agent.target_role === "shop"
-                          ? "secondary"
-                          : "outline"
-                      }
+                    <Select
+                      value={agent.target_role || "both"}
+                      onValueChange={(value) => {
+                        handleUpdateAgent({
+                          id: agent.id,
+                          target_role: value as "user" | "shop" | "both",
+                        });
+                      }}
                     >
-                      {agent.target_role === "both"
-                        ? t("both")
-                        : agent.target_role === "shop"
-                        ? t("shop")
-                        : t("user")}
-                    </Badge>
+                      <SelectTrigger className="w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">{t("user")}</SelectItem>
+                        <SelectItem value="shop">{t("shop")}</SelectItem>
+                        <SelectItem value="both">{t("both")}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

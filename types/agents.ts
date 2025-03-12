@@ -30,7 +30,7 @@ export interface Agent {
   updated_at: string;
   user_id: string;
   is_active: boolean;
-  target_role: "user" | "shop" | "admin" | "both";
+  target_role: "user" | "shop" | "both";
   target_agent_id?: string;
   documentation?: string;
 }

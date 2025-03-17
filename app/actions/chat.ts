@@ -168,8 +168,8 @@ export async function sendMessage(
       );
 
       userRole = userRoleInfo.role || "user";
-      isAdmin = userRoleInfo.isAdmin;
-      isShop = userRoleInfo.isShop;
+      isAdmin = userRoleInfo.role === "admin";
+      isShop = userRoleInfo.role === "shop";
 
       console.log("sendMessage - Rol del usuario:", userRole);
       console.log("sendMessage - Es admin:", isAdmin);

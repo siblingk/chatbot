@@ -5,10 +5,12 @@ import { SettingsModal } from "./settings-modal";
 import { getSettings } from "@/app/actions/settings";
 import { getUsers } from "@/app/actions/users";
 import { getShops } from "@/app/actions/shops";
+import { getUserOrganizations } from "@/app/actions/organizations";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
 import { Setting } from "@/types/settings";
 import { User } from "@/app/actions/users";
 import { Shop } from "@/types/shops";
+import { OrganizationWithRole } from "@/types/organization";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -21,6 +23,9 @@ export function GlobalSettingsModal() {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [organizations, setOrganizations] = useState<OrganizationWithRole[]>(
+    []
+  );
   const [hasError, setHasError] = useState(false);
   const t = useTranslations();
   const tSettings = useTranslations("settings");
@@ -48,6 +53,10 @@ export function GlobalSettingsModal() {
         // Obtener tiendas
         const shopsData = await getShops();
         setShops(shopsData);
+
+        // Obtener organizaciones
+        const organizationsData = await getUserOrganizations();
+        setOrganizations(organizationsData);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -85,6 +94,7 @@ export function GlobalSettingsModal() {
       settings={settings}
       users={users}
       shops={shops}
+      organizations={organizations}
       settingsColumns={createSettingsColumns(tSettings)}
       userColumns={createUserColumns(tUsers)}
       hasError={hasError}

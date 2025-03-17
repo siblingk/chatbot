@@ -14,6 +14,7 @@ import { SettingsModalProvider } from "@/contexts/settings-modal-context";
 import { GlobalSettingsModal } from "@/components/settings/global-settings-modal";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { AuthRefresh } from "@/components/auth/auth-refresh";
+import { OrganizationProvider } from "@/contexts/organization-context";
 
 import "@/app/globals.css";
 import { NextIntlClientProvider } from "next-intl";
@@ -50,17 +51,19 @@ export default async function MainLayout({
             <ChatProvider>
               <LanguageProvider>
                 <SettingsModalProvider>
-                  <SidebarProvider defaultOpen={false}>
-                    <AuthRefresh />
-                    <AppSidebar />
-                    <div className="flex flex-col min-h-screen w-full">
-                      <NavBar />
-                      <main className="flex-1 mx-auto container">
-                        {children}
-                      </main>
-                    </div>
-                    <GlobalSettingsModal />
-                  </SidebarProvider>
+                  <OrganizationProvider>
+                    <SidebarProvider defaultOpen={false}>
+                      <AuthRefresh />
+                      <AppSidebar />
+                      <div className="flex flex-col min-h-screen w-full">
+                        <NavBar />
+                        <main className="flex-1 mx-auto container">
+                          {children}
+                        </main>
+                      </div>
+                      <GlobalSettingsModal />
+                    </SidebarProvider>
+                  </OrganizationProvider>
                 </SettingsModalProvider>
               </LanguageProvider>
             </ChatProvider>

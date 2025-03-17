@@ -481,7 +481,7 @@ export async function getUserPreferredAgent(agentId?: string) {
   try {
     const userRoleInfo = await getUserRole();
     userRole = userRoleInfo.role || "user";
-    isShop = userRoleInfo.isShop;
+    isShop = userRoleInfo.role === "shop";
     console.log("getUserPreferredAgent - Rol del usuario:", userRole);
     console.log("getUserPreferredAgent - Es tienda:", isShop);
   } catch (error) {

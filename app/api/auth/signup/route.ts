@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { setupFirstUser } from "@/app/actions/setup";
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
     const cookieStore = cookies();
     const supabase = await createClient(cookieStore);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -18,6 +19,12 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Si el usuario se registró correctamente, intentar asignarle el rol de administrador
+    // si es el primer usuario del sistema
+    if (data?.user) {
+      await setupFirstUser();
     }
 
     return NextResponse.json(

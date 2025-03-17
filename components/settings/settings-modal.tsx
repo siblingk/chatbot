@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Shield,
   Receipt,
+  Building,
 } from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
@@ -41,11 +42,14 @@ import { SecurityTab } from "./security-tab";
 import { SecurityConfig } from "@/types/security";
 import { SubscriptionBillingTab } from "./subscription-billing-tab";
 import { SubscriptionBillingConfig } from "@/types/subscription-billing";
+import { OrganizationsTab } from "./organizations-tab";
+import { OrganizationWithRole } from "@/types/organization";
 
 interface SettingsModalProps {
   settings: Setting[];
   users: User[];
   shops: Shop[];
+  organizations?: OrganizationWithRole[];
   settingsColumns: ColumnDef<Setting>[];
   userColumns?: ColumnDef<User>[];
   connectedAppsConfig?: ConnectedAppsConfig;
@@ -74,6 +78,7 @@ interface SettingsModalProps {
 export function SettingsModal({
   users,
   shops,
+  organizations = [],
   userColumns = [],
   connectedAppsConfig,
   onUpdateConnectedApps,
@@ -149,6 +154,11 @@ export function SettingsModal({
 
     if (isAdmin) {
       options.push(
+        {
+          value: "organizations",
+          label: t("organizations.title"),
+          icon: Building,
+        },
         {
           value: "shop_members",
           label: t("shopMembers"),
@@ -238,6 +248,16 @@ export function SettingsModal({
                 </div>
               ) : (
                 <>
+                  {activeTab === "organizations" && isAdmin && (
+                    <OrganizationsTab
+                      organizations={organizations}
+                      users={users}
+                      shops={shops}
+                      userColumns={userColumns}
+                      onUpdateUserRole={onUpdateUserRole}
+                      onRemoveUser={onRemoveUser}
+                    />
+                  )}
                   {activeTab === "shop_members" && isAdmin && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">
@@ -727,7 +747,8 @@ export function SettingsModal({
                     activeTab !== "connected_apps" &&
                     activeTab !== "twilio_sendgrid" &&
                     activeTab !== "security" &&
-                    activeTab !== "subscription_billing" && (
+                    activeTab !== "subscription_billing" &&
+                    activeTab !== "organizations" && (
                       <div className="flex flex-col gap-4">
                         <h2 className="text-2xl font-bold mb-6">
                           {navItems.find((item) => item.value === activeTab)

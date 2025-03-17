@@ -44,12 +44,14 @@ interface UsersTableProps {
   users: User[];
   columns?: ColumnDef<User>[];
   onUpdateUserRole?: (userId: string, role: string) => Promise<void>;
+  onRemoveUser?: (userId: string) => Promise<void>;
 }
 
 export function UsersTable({
   users,
   columns = [],
   onUpdateUserRole,
+  onRemoveUser,
 }: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 

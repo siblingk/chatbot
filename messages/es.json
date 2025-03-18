@@ -364,7 +364,12 @@
       "inviteDescription": "Invita a un nuevo miembro a esta organización",
       "invite": "Invitar",
       "organizations": "Organizaciones"
-    }
+    },
+    "removeConfirmTitle": "Eliminar tienda de la organización",
+    "removeConfirmDescription": "¿Estás seguro de que deseas eliminar esta tienda de la organización? La tienda seguirá existiendo pero ya no estará asociada a esta organización.",
+    "removeSuccess": "Tienda eliminada de la organización correctamente",
+    "errorDeleting": "Hubo un problema al eliminar la tienda. Por favor, revisa si la tienda fue eliminada y refresca la página.",
+    "errorRemoving": "Hubo un problema al desasociar la tienda. Por favor, revisa si la tienda fue desasociada y refresca la página."
   },
   "users": {
     "title": "Gestión de usuarios",
@@ -595,7 +600,12 @@
     "unassignedAvailable": "tiendas sin asignar disponibles",
     "deleteConfirmTitle": "Eliminar Tienda",
     "deleteConfirmDescription": "¿Estás seguro de que deseas eliminar esta tienda? Esta acción no se puede deshacer.",
-    "organizationRequired": "La organización es obligatoria"
+    "organizationRequired": "La organización es obligatoria",
+    "removeConfirmTitle": "Eliminar tienda de la organización",
+    "removeConfirmDescription": "¿Estás seguro de que deseas eliminar esta tienda de la organización? La tienda seguirá existiendo pero ya no estará asociada a esta organización.",
+    "removeSuccess": "Tienda eliminada de la organización correctamente",
+    "errorDeleting": "Hubo un problema al eliminar la tienda. Por favor, revisa si la tienda fue eliminada y refresca la página.",
+    "errorRemoving": "Hubo un problema al desasociar la tienda. Por favor, revisa si la tienda fue desasociada y refresca la página."
   },
   "connectedApps": {
     "metaAdsIntegration": "Integración de Meta Ads",

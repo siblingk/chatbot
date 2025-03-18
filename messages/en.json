@@ -432,7 +432,7 @@
     "createSuccess": "Organization created successfully",
     "createError": "Error creating organization",
     "manage": "Manage organizations",
-    "select": "Select organization",
+    "select": "Organization",
     "selectPlaceholder": "Select an organization",
     "manageMembers": "Manage members",
     "settings": "Settings",
@@ -487,7 +487,9 @@
     "create": "Create",
     "update": "Update",
     "close": "Close",
-    "back": "Back"
+    "back": "Back",
+    "remove": "Remove",
+    "view": "View"
   },
   "chat": {
     "title": "Chat",
@@ -589,9 +591,9 @@
     "addToOrganization": "Add shop to organization",
     "noShopsInOrganization": "No shops in this organization",
     "assignExisting": "Assign Existing Shop to Organization",
-    "selectShop": "Select Shop",
+    "selectShop": "Shop",
     "selectShopPlaceholder": "Select a shop",
-    "assign": "Assign Shop",
+    "assign": "Assign shop",
     "assignSuccess": "Shop assigned to organization successfully",
     "selectBothRequired": "Please select both a shop and an organization",
     "noUnassignedShops": "No unassigned shops available",
@@ -599,7 +601,10 @@
     "deleteConfirmTitle": "Delete Shop",
     "deleteConfirmDescription": "Are you sure you want to delete this shop? This action cannot be undone.",
     "organizationRequired": "Organization is required",
-    "createDescription": "Create a new shop or workshop"
+    "createDescription": "Create a new shop or workshop",
+    "removeConfirmTitle": "Remove Shop from Organization",
+    "removeConfirmDescription": "Are you sure you want to remove this shop from the organization? The shop will still exist but will no longer be associated with this organization.",
+    "removeSuccess": "Shop removed from organization successfully"
   },
   "connectedApps": {
     "metaAdsIntegration": "Meta Ads Integration",

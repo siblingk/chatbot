@@ -34,6 +34,7 @@ import {
 import {
   deleteShop,
   assignShopToOrganization,
+  removeShopFromOrganization,
 } from "@/app/actions/organizations";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -76,6 +77,9 @@ export function OrganizationShopsList({
   const [selectedShopId, setSelectedShopId] = useState<string>("");
   const [selectedOrgForAssign, setSelectedOrgForAssign] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
+  const [removeShopId, setRemoveShopId] = useState<string | null>(null);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   // Filtrar tiendas sin organización asignada
   const unassignedShops = useMemo(() => {
@@ -150,6 +154,33 @@ export function OrganizationShopsList({
       toast.error(t("common.error"));
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const handleRemoveShop = (shopId: string) => {
+    setRemoveShopId(shopId);
+    setRemoveDialogOpen(true);
+  };
+
+  const confirmRemoveShop = async () => {
+    if (!removeShopId) return;
+
+    try {
+      setIsRemoving(true);
+      const result = await removeShopFromOrganization(removeShopId);
+
+      if (result.success) {
+        toast.success(t("shops.removeSuccess"));
+        router.refresh();
+      } else {
+        toast.error(result.error || t("common.error"));
+      }
+    } catch (error) {
+      console.error("Error al desasociar tienda:", error);
+      toast.error(t("common.error"));
+    } finally {
+      setIsRemoving(false);
+      setRemoveDialogOpen(false);
     }
   };
 
@@ -325,6 +356,21 @@ export function OrganizationShopsList({
                                   <Button
                                     variant="ghost"
                                     size="sm"
+                                    className="h-8 w-8 p-0 text-amber-600 hover:text-amber-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveShop(shop.id);
+                                    }}
+                                    title={t("shops.removeConfirmTitle")}
+                                  >
+                                    <Link className="h-4 w-4" />
+                                    <span className="sr-only">
+                                      {t("common.remove")}
+                                    </span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
                                     className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -437,6 +483,28 @@ export function OrganizationShopsList({
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("shops.removeConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("shops.removeConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveShop}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isRemoving}
+            >
+              {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("common.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

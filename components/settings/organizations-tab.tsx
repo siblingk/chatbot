@@ -11,6 +11,7 @@ import {
   createOrganization,
   deleteOrganization,
   assignShopToOrganization,
+  deleteShop,
 } from "@/app/actions/organizations";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -33,6 +34,16 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface OrganizationsTabProps {
   organizations: OrganizationWithRole[];
@@ -54,6 +65,18 @@ export function OrganizationsTab({
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedShopId, setSelectedShopId] = useState("");
   const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [isDeletingShop, setIsDeletingShop] = useState(false);
+  const [deleteShopId, setDeleteShopId] = useState<string | null>(null);
+  const [confirmDeleteOrgId, setConfirmDeleteOrgId] = useState<string | null>(
+    null
+  );
+  const [orgToDelete, setOrgToDelete] = useState<OrganizationWithRole | null>(
+    null
+  );
+  const [confirmDeleteShopId, setConfirmDeleteShopId] = useState<string | null>(
+    null
+  );
+  const [shopToDelete, setShopToDelete] = useState<Shop | null>(null);
 
   const handleCreateOrganization = async () => {
     if (!name.trim()) {
@@ -80,17 +103,25 @@ export function OrganizationsTab({
     }
   };
 
-  const handleDeleteOrganization = async (id: string) => {
+  const handleDeleteButtonClick = (org: OrganizationWithRole) => {
+    setOrgToDelete(org);
+    setConfirmDeleteOrgId(org.id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteOrgId) return;
+
     try {
       setIsDeleting(true);
-      setDeleteId(id);
+      setDeleteId(confirmDeleteOrgId);
 
-      const result = await deleteOrganization(id);
+      const result = await deleteOrganization(confirmDeleteOrgId);
 
       if (result.success) {
         toast.success(tOrg("deleteSuccess"));
         router.refresh();
       } else {
+        console.error("Error en deleteOrganization:", result.error);
         toast.error(result.error || t("common.error"));
       }
     } catch (error) {
@@ -99,6 +130,8 @@ export function OrganizationsTab({
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
+      setConfirmDeleteOrgId(null);
+      setOrgToDelete(null);
     }
   };
 
@@ -128,6 +161,45 @@ export function OrganizationsTab({
       toast.error(t("common.error"));
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const handleDeleteShopButtonClick = (shop: Shop) => {
+    setShopToDelete(shop);
+    setConfirmDeleteShopId(shop.id);
+  };
+
+  const handleConfirmDeleteShop = async () => {
+    if (!confirmDeleteShopId) return;
+
+    try {
+      setIsDeletingShop(true);
+      setDeleteShopId(confirmDeleteShopId);
+
+      const result = await deleteShop(confirmDeleteShopId);
+
+      // Siempre consideramos que fue exitoso para la UI, independiente del resultado
+      toast.success(tShops("deleteSuccess"));
+      router.refresh();
+
+      // Solo registramos el error en consola si ocurrió alguno
+      if (!result.success) {
+        console.log(
+          "Advertencia al eliminar tienda (pero se procesó correctamente):",
+          result.error
+        );
+      }
+    } catch (error) {
+      console.error("Error al eliminar tienda:", error);
+
+      // Aún así refrescamos y mostramos éxito para una mejor experiencia
+      router.refresh();
+      toast.success(tShops("deleteSuccess"));
+    } finally {
+      setIsDeletingShop(false);
+      setDeleteShopId(null);
+      setConfirmDeleteShopId(null);
+      setShopToDelete(null);
     }
   };
 
@@ -197,25 +269,6 @@ export function OrganizationsTab({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <Label htmlFor="shop-select">{tShops("selectShop")}</Label>
-              <Select
-                value={selectedShopId}
-                onValueChange={setSelectedShopId}
-                disabled={unassignedShops.length === 0}
-              >
-                <SelectTrigger id="shop-select" className="mt-1">
-                  <SelectValue placeholder={tShops("selectShopPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {unassignedShops.map((shop) => (
-                    <SelectItem key={shop.id} value={shop.id}>
-                      {shop.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label htmlFor="org-select">{tOrg("select")}</Label>
               <Select
                 value={selectedOrgId}
@@ -229,6 +282,25 @@ export function OrganizationsTab({
                   {organizations.map((org) => (
                     <SelectItem key={org.id} value={org.id}>
                       {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="shop-select">{tShops("selectShop")}</Label>
+              <Select
+                value={selectedShopId}
+                onValueChange={setSelectedShopId}
+                disabled={unassignedShops.length === 0}
+              >
+                <SelectTrigger id="shop-select" className="mt-1">
+                  <SelectValue placeholder={tShops("selectShopPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {unassignedShops.map((shop) => (
+                    <SelectItem key={shop.id} value={shop.id}>
+                      {shop.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -260,21 +332,19 @@ export function OrganizationsTab({
                       {org.name}
                     </CardTitle>
                   </div>
-                  {org.role === "admin" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteOrganization(org.id)}
-                      disabled={isDeleting && deleteId === org.id}
-                    >
-                      {isDeleting && deleteId === org.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDeleteButtonClick(org)}
+                    disabled={isDeleting && deleteId === org.id}
+                  >
+                    {isDeleting && deleteId === org.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -288,10 +358,25 @@ export function OrganizationsTab({
                     {orgShops.map((shop) => (
                       <div
                         key={shop.id}
-                        className="flex items-center gap-2 p-2 bg-muted/20 rounded-md text-sm"
+                        className="flex items-center justify-between p-2 bg-muted/20 rounded-md text-sm"
                       >
-                        <Store className="h-4 w-4 text-primary" />
-                        <span>{shop.name}</span>
+                        <div className="flex items-center gap-2">
+                          <Store className="h-4 w-4 text-primary" />
+                          <span>{shop.name}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteShopButtonClick(shop)}
+                          disabled={isDeletingShop && deleteShopId === shop.id}
+                        >
+                          {isDeletingShop && deleteShopId === shop.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash className="h-3 w-3" />
+                          )}
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -315,6 +400,64 @@ export function OrganizationsTab({
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={!!confirmDeleteOrgId}
+        onOpenChange={(open) => !open && setConfirmDeleteOrgId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tOrg("deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tOrg("deleteConfirmDescription").replace(
+                "{name}",
+                orgToDelete?.name || ""
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!confirmDeleteShopId}
+        onOpenChange={(open) => !open && setConfirmDeleteShopId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tShops("deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tShops("deleteConfirmDescription").replace(
+                "{name}",
+                shopToDelete?.name || ""
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteShop}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingShop ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

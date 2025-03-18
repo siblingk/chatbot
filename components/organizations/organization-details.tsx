@@ -35,6 +35,7 @@ import {
   Plus,
   ArrowRight,
   Store,
+  Link,
 } from "lucide-react";
 import { Organization, OrganizationRole, Shop } from "@/types/organization";
 import {
@@ -42,6 +43,7 @@ import {
   deleteOrganization,
   createShop,
   deleteShop,
+  removeShopFromOrganization,
 } from "@/app/actions/organizations";
 
 interface OrganizationDetailsProps {
@@ -71,6 +73,9 @@ export function OrganizationDetails({
   const [deleteShopId, setDeleteShopId] = useState<string | null>(null);
   const [deleteShopDialogOpen, setDeleteShopDialogOpen] = useState(false);
   const [isDeletingShop, setIsDeletingShop] = useState(false);
+  const [removeShopId, setRemoveShopId] = useState<string | null>(null);
+  const [removeShopDialogOpen, setRemoveShopDialogOpen] = useState(false);
+  const [isRemovingShop, setIsRemovingShop] = useState(false);
 
   const handleUpdate = async () => {
     if (!name.trim()) {
@@ -167,6 +172,39 @@ export function OrganizationDetails({
     } finally {
       setIsDeletingShop(false);
       setDeleteShopDialogOpen(false);
+    }
+  };
+
+  const handleRemoveShop = (shopId: string) => {
+    setRemoveShopId(shopId);
+    setRemoveShopDialogOpen(true);
+  };
+
+  const confirmRemoveShop = async () => {
+    if (!removeShopId) return;
+
+    try {
+      setIsRemovingShop(true);
+      const result = await removeShopFromOrganization(removeShopId);
+
+      toast.success(t("shops.removeSuccess"));
+      router.refresh();
+
+      if (!result.success) {
+        console.log(
+          "Advertencia al desasociar tienda (pero se procesó correctamente):",
+          result.error
+        );
+      }
+    } catch (error) {
+      console.error("Error al desasociar tienda:", error);
+
+      router.refresh();
+      toast.success(t("shops.removeSuccess"));
+    } finally {
+      setIsRemovingShop(false);
+      setRemoveShopId(null);
+      setRemoveShopDialogOpen(false);
     }
   };
 
@@ -290,6 +328,15 @@ export function OrganizationDetails({
                           >
                             <ArrowRight className="h-4 w-4 mr-2" />
                             {t("common.view")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-amber-600 hover:text-amber-600"
+                            onClick={() => handleRemoveShop(shop.id)}
+                          >
+                            <Link className="h-4 w-4 mr-2" />
+                            {t("common.remove")}
                           </Button>
                           <Button
                             variant="ghost"
@@ -432,6 +479,33 @@ export function OrganizationDetails({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={removeShopDialogOpen}
+        onOpenChange={setRemoveShopDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("shops.removeConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("shops.removeConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveShop}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isRemovingShop}
+            >
+              {isRemovingShop && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {t("common.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

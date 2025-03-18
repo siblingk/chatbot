@@ -346,3 +346,93 @@ export async function removeUserFromOrganization(
     return { success: false, error: "Error al eliminar miembro" };
   }
 }
+
+/**
+ * Elimina un shop
+ */
+export async function deleteShop(shopId: string) {
+  try {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    // Obtener el shop para saber a qué organización pertenece
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("organization_id")
+      .eq("id", shopId)
+      .single();
+
+    if (shopError) {
+      console.error("Error al obtener shop:", shopError);
+      return { success: false, error: "Error al obtener shop" };
+    }
+
+    // Eliminar el shop
+    const { error: deleteError } = await supabase
+      .from("shops")
+      .delete()
+      .eq("id", shopId);
+
+    if (deleteError) {
+      console.error("Error al eliminar shop:", deleteError);
+      return { success: false, error: "Error al eliminar shop" };
+    }
+
+    // El trigger en la base de datos actualizará automáticamente la lista de shops en la organización
+
+    revalidatePath(`/organizations/${shop.organization_id}`);
+    revalidatePath("/organizations");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al eliminar shop:", error);
+    return { success: false, error: "Error al eliminar shop" };
+  }
+}
+
+/**
+ * Asigna una tienda existente a una organización
+ */
+export async function assignShopToOrganization(
+  shopId: string,
+  organizationId: string
+) {
+  try {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    // Obtener información de la tienda
+    const { data: shop, error: shopError } = await supabase
+      .from("shops")
+      .select("*")
+      .eq("id", shopId)
+      .single();
+
+    if (shopError) {
+      console.error("Error al obtener tienda:", shopError);
+      return { success: false, error: "Error al obtener tienda" };
+    }
+
+    // Actualizar la tienda con el nuevo organization_id
+    const { error: updateError } = await supabase
+      .from("shops")
+      .update({ organization_id: organizationId })
+      .eq("id", shopId);
+
+    if (updateError) {
+      console.error("Error al actualizar tienda:", updateError);
+      return {
+        success: false,
+        error: "Error al asignar tienda a organización",
+      };
+    }
+
+    // El trigger en la base de datos actualizará automáticamente la lista de shops en la organización
+
+    revalidatePath(`/organizations/${organizationId}`);
+    revalidatePath("/organizations");
+    return { success: true, data: shop };
+  } catch (error) {
+    console.error("Error al asignar tienda:", error);
+    return { success: false, error: "Error al asignar tienda a organización" };
+  }
+}

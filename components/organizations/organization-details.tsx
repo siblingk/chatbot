@@ -34,11 +34,14 @@ import {
   Trash,
   Plus,
   ArrowRight,
+  Store,
 } from "lucide-react";
 import { Organization, OrganizationRole, Shop } from "@/types/organization";
 import {
   updateOrganization,
   deleteOrganization,
+  createShop,
+  deleteShop,
 } from "@/app/actions/organizations";
 
 interface OrganizationDetailsProps {
@@ -58,9 +61,16 @@ export function OrganizationDetails({
   const router = useRouter();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [createShopDialogOpen, setCreateShopDialogOpen] = useState(false);
   const [name, setName] = useState(organization.name);
+  const [shopName, setShopName] = useState("");
+  const [shopLocation, setShopLocation] = useState("Default Location");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingShop, setIsCreatingShop] = useState(false);
+  const [deleteShopId, setDeleteShopId] = useState<string | null>(null);
+  const [deleteShopDialogOpen, setDeleteShopDialogOpen] = useState(false);
+  const [isDeletingShop, setIsDeletingShop] = useState(false);
 
   const handleUpdate = async () => {
     if (!name.trim()) {
@@ -103,6 +113,60 @@ export function OrganizationDetails({
       toast.error(t("common.error"));
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleCreateShop = async () => {
+    if (!shopName.trim()) {
+      toast.error(t("shops.nameRequired"));
+      return;
+    }
+
+    try {
+      setIsCreatingShop(true);
+      const result = await createShop(organization.id, shopName, shopLocation);
+
+      if (result.success) {
+        toast.success(t("shops.createSuccess"));
+        setCreateShopDialogOpen(false);
+        setShopName("");
+        setShopLocation("Default Location");
+        router.refresh();
+      } else {
+        toast.error(result.error || t("common.error"));
+      }
+    } catch (error) {
+      console.error("Error al crear tienda:", error);
+      toast.error(t("common.error"));
+    } finally {
+      setIsCreatingShop(false);
+    }
+  };
+
+  const handleDeleteShop = (shopId: string) => {
+    setDeleteShopId(shopId);
+    setDeleteShopDialogOpen(true);
+  };
+
+  const confirmDeleteShop = async () => {
+    if (!deleteShopId) return;
+
+    try {
+      setIsDeletingShop(true);
+      const result = await deleteShop(deleteShopId);
+
+      if (result.success) {
+        toast.success(t("shops.deleteSuccess"));
+        router.refresh();
+      } else {
+        toast.error(result.error || t("common.error"));
+      }
+    } catch (error) {
+      console.error("Error al eliminar tienda:", error);
+      toast.error(t("common.error"));
+    } finally {
+      setIsDeletingShop(false);
+      setDeleteShopDialogOpen(false);
     }
   };
 
@@ -193,12 +257,7 @@ export function OrganizationDetails({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <h3 className="text-lg font-medium">{t("shops.title")}</h3>
-              <Button
-                size="sm"
-                onClick={() => {
-                  toast.info("Funcionalidad de crear shop en desarrollo");
-                }}
-              >
+              <Button size="sm" onClick={() => setCreateShopDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 {t("shops.create")}
               </Button>
@@ -210,25 +269,38 @@ export function OrganizationDetails({
                     {shops.map((shop) => (
                       <div
                         key={shop.id}
-                        className="flex justify-between items-center p-4 border rounded-md"
+                        className="flex justify-between items-center p-4 border rounded-md hover:bg-accent/50 transition-colors"
                       >
-                        <div>
-                          <p className="font-medium">{shop.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            ID: {shop.id.substring(0, 8)}...
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <Store className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium">{shop.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              ID: {shop.id.substring(0, 8)}...
+                            </p>
+                          </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            toast.info(
-                              "Funcionalidad de ver shop en desarrollo"
-                            );
-                          }}
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              router.push(`/shops/${shop.id}`);
+                            }}
+                          >
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            {t("common.view")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteShop(shop.id)}
+                          >
+                            <Trash className="h-4 w-4 mr-2" />
+                            {t("common.delete")}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -268,6 +340,52 @@ export function OrganizationDetails({
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={createShopDialogOpen}
+        onOpenChange={setCreateShopDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("shops.create")}</DialogTitle>
+            <DialogDescription>
+              {t("shops.createDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="shopName">{t("shops.name")}</Label>
+              <Input
+                id="shopName"
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                placeholder={t("shops.namePlaceholder")}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="shopLocation">{t("shops.location")}</Label>
+              <Input
+                id="shopLocation"
+                value={shopLocation}
+                onChange={(e) => setShopLocation(e.target.value)}
+                placeholder={t("shops.locationPlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="submit"
+              onClick={handleCreateShop}
+              disabled={isCreatingShop}
+            >
+              {isCreatingShop && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {t("common.create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -286,6 +404,33 @@ export function OrganizationDetails({
               disabled={isDeleting}
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteShopDialogOpen}
+        onOpenChange={setDeleteShopDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("shops.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("shops.deleteConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteShop}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingShop}
+            >
+              {isDeletingShop && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>

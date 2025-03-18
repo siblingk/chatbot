@@ -8,6 +8,8 @@ export interface Shop {
   labor_tax_percentage: number;
   parts_tax_percentage: number;
   misc_tax_percentage: number;
+  organization_id?: string;
+  user_id?: string;
   created_at: string;
   updated_at: string;
 }

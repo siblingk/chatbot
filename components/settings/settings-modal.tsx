@@ -156,7 +156,7 @@ export function SettingsModal({
       options.push(
         {
           value: "organizations",
-          label: t("organizations.title"),
+          label: t("title"),
           icon: Building,
         },
         {
@@ -251,11 +251,7 @@ export function SettingsModal({
                   {activeTab === "organizations" && isAdmin && (
                     <OrganizationsTab
                       organizations={organizations}
-                      users={users}
                       shops={shops}
-                      userColumns={userColumns}
-                      onUpdateUserRole={onUpdateUserRole}
-                      onRemoveUser={onRemoveUser}
                     />
                   )}
                   {activeTab === "shop_members" && isAdmin && (

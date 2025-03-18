@@ -1,18 +1,19 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bot } from "lucide-react";
+import { Bot, Sparkles } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useSearchParams } from "next/navigation";
 import { getUserPreferredAgent } from "@/app/actions/agents";
 import { useTranslations } from "next-intl";
+import { motion } from "framer-motion";
 
 interface AgentWelcomeCardProps {
   agentId?: string;
 }
 
 // Altura fija para evitar layout shifts
-const CARD_MIN_HEIGHT = "120px";
+const CARD_MIN_HEIGHT = "140px";
 
 // Componente memoizado para evitar re-renderizados innecesarios
 const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
@@ -36,23 +37,32 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
     try {
       setIsLoading(true);
 
-      // Obtener el agente preferido
+      // Obtener el agente preferido - esta función ahora usa caché
       const preferredAgent = await getUserPreferredAgent(effectiveAgentId);
 
       if (preferredAgent) {
+        console.log("Agente encontrado:", preferredAgent.name);
+        console.log("Mensaje de bienvenida:", preferredAgent.welcome_message);
+
         // El agente es compatible por defecto ya que getUserPreferredAgent ya hace esta verificación
+        setAgentName(preferredAgent.name);
+
+        // Si el agente tiene un mensaje de bienvenida, usarlo
         if (preferredAgent.welcome_message) {
           setWelcomeMessage(preferredAgent.welcome_message);
-          setAgentName(preferredAgent.name);
         } else {
+          // Si no tiene mensaje de bienvenida, usar el mensaje predeterminado
           setWelcomeMessage(t("initialMessage"));
-          setAgentName(preferredAgent.name);
         }
       } else {
+        // Si no se encontró ningún agente, usar valores predeterminados
+        setAgentName("Welcome to siblingk");
         setWelcomeMessage(t("initialMessage"));
       }
-    } catch {
+    } catch (error) {
       // Capturar cualquier error y usar el mensaje predeterminado
+      console.error("Error al obtener información del agente:", error);
+      setAgentName("Welcome to siblingk");
       setWelcomeMessage(t("initialMessage"));
     } finally {
       setIsLoading(false);
@@ -77,22 +87,57 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
   );
 
   return (
-    <div
-      className="transition-opacity duration-200"
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="transition-all duration-300"
       style={{ minHeight: CARD_MIN_HEIGHT, opacity: isLoading ? 0.7 : 1 }}
     >
-      <Card className="mb-6 bg-sidebar text-center p-0 border-none shadow-sm font-normal tracking-wide rounded-none h-full">
-        <CardHeader className="py-4">
-          <CardTitle className="text-md flex items-center gap-2 text-primary">
-            <Bot className="h-5 w-5 text-primary" />
-            {nameToShow}
+      <Card className="mb-6 bg-gradient-to-br from-sidebar to-sidebar/90 text-center p-0 border border-primary/10 shadow-lg font-normal tracking-wide rounded-xl overflow-hidden h-full relative">
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-primary/5 opacity-70" />
+
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+        <CardHeader className="py-5 relative">
+          <CardTitle className="text-lg flex items-center justify-center gap-3 text-primary">
+            <motion.div
+              animate={{
+                rotate: [0, 5, 0, -5, 0],
+                scale: [1, 1.05, 1, 1.05, 1],
+              }}
+              transition={{
+                duration: 5,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+              className="relative"
+            >
+              <Bot className="h-6 w-6 text-primary relative z-10" />
+              <motion.div
+                className="absolute -inset-1 rounded-full bg-primary/10"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+            </motion.div>
+            <span className="font-semibold">{nameToShow}</span>
+            <Sparkles className="h-4 w-4 text-primary/70" />
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-3">
-          <p className="text-sm whitespace-pre-wrap">{messageToShow}</p>
+
+        <CardContent className="pb-5 px-6 relative">
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+            {messageToShow}
+          </p>
+
+          <motion.div
+            className="w-16 h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent rounded-full mx-auto mt-4"
+            animate={{ opacity: [0.3, 0.7, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 });
 

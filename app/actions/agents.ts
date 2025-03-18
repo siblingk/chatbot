@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { Agent } from "@/types/agents";
 import { getUserRole } from "@/app/actions/auth";
+import { unstable_cache } from "next/cache";
 
 export async function getAgents(onlyActive = false, filterByRole = true) {
   const cookieStore = cookies();
@@ -463,215 +464,128 @@ export async function getAgentWelcomeMessage(agentId: string) {
 }
 
 /**
+ * Versión cacheada de la función para obtener el agente preferido
+ */
+export const getCachedUserPreferredAgent = unstable_cache(
+  async (
+    agentId: string | undefined,
+    userRole: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabaseClient: any
+  ) => {
+    console.log("=== INICIO getCachedUserPreferredAgent ===");
+    console.log("Agent ID proporcionado:", agentId);
+    console.log("Rol de usuario proporcionado:", userRole);
+
+    // PRIORIDAD 1: Si hay un agentId específico, usarlo directamente
+    if (agentId) {
+      console.log("Buscando agente específico con ID:", agentId);
+
+      // Consulta directa a la tabla agents por el ID
+      const { data: agent, error } = await supabaseClient
+        .from("agents")
+        .select("*")
+        .eq("id", agentId)
+        .single();
+
+      if (error) {
+        console.error("Error al buscar agente por ID:", error);
+      } else if (agent) {
+        // Verificar si el agente es compatible con el rol del usuario
+        const isShop = userRole === "shop";
+        const isCompatible =
+          agent.target_role === "both" ||
+          (isShop && agent.target_role === "shop") ||
+          (!isShop && agent.target_role === "user");
+
+        console.log("Agente específico encontrado:", agent.name);
+        console.log("Rol objetivo del agente:", agent.target_role);
+        console.log("Agente compatible con el rol del usuario:", isCompatible);
+
+        // Solo devolver el agente si es compatible con el rol del usuario
+        if (isCompatible) {
+          console.log("=== FIN getCachedUserPreferredAgent ===");
+          return agent;
+        } else {
+          console.log(
+            "El agente específico no es compatible con el rol del usuario, buscando alternativas"
+          );
+        }
+      } else {
+        console.log("No se encontró el agente específico con ID:", agentId);
+      }
+    }
+
+    // Si no se encontró un agente específico, buscar uno predeterminado para el rol
+    const isShop = userRole === "shop";
+    let query = supabaseClient.from("agents").select("*").eq("is_active", true);
+
+    if (isShop) {
+      // Para tiendas, buscar primero agentes específicos para tiendas
+      query = query.eq("target_role", "shop");
+    } else {
+      // Para usuarios normales, buscar primero agentes específicos para usuarios
+      query = query.eq("target_role", "user");
+    }
+
+    const { data: specificAgents, error: specificError } = await query.limit(1);
+
+    if (!specificError && specificAgents && specificAgents.length > 0) {
+      console.log(
+        `Agente predeterminado para ${
+          isShop ? "tienda" : "usuario"
+        } encontrado:`,
+        specificAgents[0].name
+      );
+      console.log("=== FIN getCachedUserPreferredAgent ===");
+      return specificAgents[0];
+    }
+
+    // Si no hay agentes específicos, buscar agentes para ambos roles
+    const { data: bothAgents, error: bothError } = await supabaseClient
+      .from("agents")
+      .select("*")
+      .eq("is_active", true)
+      .eq("target_role", "both")
+      .limit(1);
+
+    if (!bothError && bothAgents && bothAgents.length > 0) {
+      console.log(
+        "Agente predeterminado para ambos roles encontrado:",
+        bothAgents[0].name
+      );
+      console.log("=== FIN getCachedUserPreferredAgent ===");
+      return bothAgents[0];
+    }
+
+    console.log("No se encontró ningún agente compatible");
+    console.log("=== FIN getCachedUserPreferredAgent ===");
+    return null;
+  },
+  ["user-preferred-agent"],
+  { revalidate: 60 } // Revalidar cada minuto
+);
+
+/**
  * Obtiene el agente preferido del usuario actual basado en su rol.
  * Si el usuario tiene un agente asignado, devuelve ese agente.
  * Si no, devuelve el agente predeterminado para su rol.
  */
 export async function getUserPreferredAgent(agentId?: string) {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  console.log("=== INICIO getUserPreferredAgent ===");
-  console.log("Agent ID proporcionado:", agentId);
-
   // Obtener el rol del usuario actual
   let userRole = "user"; // Por defecto, asumimos que es un usuario normal
-  let isShop = false;
+
+  // Crear el cliente Supabase fuera de la función cacheada
+  const cookieStore = cookies();
+  const supabase = await createClient(cookieStore);
 
   try {
     const userRoleInfo = await getUserRole();
     userRole = userRoleInfo.role || "user";
-    isShop = userRoleInfo.role === "shop";
-    console.log("getUserPreferredAgent - Rol del usuario:", userRole);
-    console.log("getUserPreferredAgent - Es tienda:", isShop);
   } catch (error) {
     console.error("Error al obtener el rol del usuario:", error);
   }
 
-  // PRIORIDAD 1: Si hay un agentId específico, usarlo directamente
-  if (agentId) {
-    console.log("Buscando agente específico con ID:", agentId);
-
-    // Consulta directa a la tabla agents por el ID
-    const { data: agent, error } = await supabase
-      .from("agents")
-      .select("*")
-      .eq("id", agentId)
-      .single();
-
-    if (error) {
-      console.error("Error al buscar agente por ID:", error);
-    } else if (agent) {
-      // Verificar si el agente es compatible con el rol del usuario
-      const isCompatible =
-        agent.target_role === "both" ||
-        (isShop && agent.target_role === "shop") ||
-        (!isShop && agent.target_role === "user");
-
-      console.log("Agente específico encontrado:", agent.name);
-      console.log("Rol objetivo del agente:", agent.target_role);
-      console.log("Agente compatible con el rol del usuario:", isCompatible);
-      console.log("Mensaje de bienvenida:", agent.welcome_message);
-
-      // Solo devolver el agente si es compatible con el rol del usuario
-      if (isCompatible) {
-        console.log("=== FIN getUserPreferredAgent ===");
-        return agent;
-      } else {
-        console.log(
-          "El agente específico no es compatible con el rol del usuario, buscando alternativas"
-        );
-      }
-    } else {
-      console.log("No se encontró el agente específico con ID:", agentId);
-    }
-  }
-
-  // PRIORIDAD 2: Obtener el usuario y su agente preferido
-  let userId = null;
-
-  try {
-    // Intentar obtener el usuario actual
-    const { data, error } = await supabase.auth.getUser();
-
-    if (!error && data.user) {
-      userId = data.user.id;
-
-      // Usuario autenticado, obtener su agente preferido
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("preferred_agent_id")
-        .eq("id", userId)
-        .single();
-
-      if (!profileError && profile) {
-        // PRIORIDAD 3: Si el usuario tiene un agente preferido, usarlo
-        if (profile.preferred_agent_id) {
-          console.log(
-            "Usuario tiene agente preferido:",
-            profile.preferred_agent_id
-          );
-
-          const { data: preferredAgent, error: preferredError } = await supabase
-            .from("agents")
-            .select("*")
-            .eq("id", profile.preferred_agent_id)
-            .eq("is_active", true)
-            .single();
-
-          if (!preferredError && preferredAgent) {
-            // Verificar si el agente preferido es compatible con el rol del usuario
-            const isCompatible =
-              preferredAgent.target_role === "both" ||
-              (isShop && preferredAgent.target_role === "shop") ||
-              (!isShop && preferredAgent.target_role === "user");
-
-            console.log("Agente preferido encontrado:", preferredAgent.name);
-            console.log(
-              "Rol objetivo del agente preferido:",
-              preferredAgent.target_role
-            );
-            console.log(
-              "Agente preferido compatible con el rol del usuario:",
-              isCompatible
-            );
-
-            if (isCompatible) {
-              console.log(
-                "Mensaje de bienvenida:",
-                preferredAgent.welcome_message
-              );
-              console.log("=== FIN getUserPreferredAgent ===");
-              return preferredAgent;
-            } else {
-              console.log(
-                "El agente preferido no es compatible con el rol del usuario, buscando alternativas"
-              );
-            }
-          } else {
-            console.log("Agente preferido no encontrado o no está activo");
-          }
-        }
-      }
-    } else {
-      console.log("Usuario no autenticado, usando rol por defecto:", userRole);
-    }
-  } catch (error) {
-    console.error("Error al verificar usuario:", error);
-    console.log("Usando rol por defecto:", userRole);
-  }
-
-  // PRIORIDAD 4: Buscar un agente específico para el rol del usuario
-  console.log("Buscando agente específico para rol:", userRole);
-
-  // Consulta para buscar agentes según el rol específico del usuario
-  const { data: roleAgents, error: roleError } = await supabase
-    .from("agents")
-    .select("*")
-    .eq("is_active", true)
-    .eq("target_role", isShop ? "shop" : "user")
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (roleError) {
-    console.error("Error al buscar agentes por rol específico:", roleError);
-  } else if (roleAgents && roleAgents.length > 0) {
-    console.log("Agente encontrado para rol específico:", roleAgents[0].name);
-    console.log("Rol objetivo del agente:", roleAgents[0].target_role);
-    console.log("Mensaje de bienvenida:", roleAgents[0].welcome_message);
-    console.log("=== FIN getUserPreferredAgent ===");
-    return roleAgents[0];
-  } else {
-    console.log(
-      "No se encontró agente para rol específico, buscando agente compatible con ambos roles"
-    );
-
-    // PRIORIDAD 5: Si no hay agentes para el rol específico, buscar uno con target_role="both"
-    const { data: bothAgents, error: bothError } = await supabase
-      .from("agents")
-      .select("*")
-      .eq("is_active", true)
-      .eq("target_role", "both")
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (bothError) {
-      console.error(
-        "Error al buscar agentes compatibles con ambos roles:",
-        bothError
-      );
-    } else if (bothAgents && bothAgents.length > 0) {
-      console.log(
-        "Agente encontrado compatible con ambos roles:",
-        bothAgents[0].name
-      );
-      console.log("Rol objetivo del agente:", bothAgents[0].target_role);
-      console.log("Mensaje de bienvenida:", bothAgents[0].welcome_message);
-      console.log("=== FIN getUserPreferredAgent ===");
-      return bothAgents[0];
-    }
-  }
-
-  // PRIORIDAD 6: Si todo lo demás falla, buscar cualquier agente activo
-  console.log("Buscando cualquier agente activo");
-
-  const { data: anyAgents, error: anyError } = await supabase
-    .from("agents")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (anyError) {
-    console.error("Error al buscar cualquier agente:", anyError);
-  } else if (anyAgents && anyAgents.length > 0) {
-    console.log("Encontrado cualquier agente activo:", anyAgents[0].name);
-    console.log("Mensaje de bienvenida:", anyAgents[0].welcome_message);
-    console.log("=== FIN getUserPreferredAgent ===");
-    return anyAgents[0];
-  }
-
-  console.log("No se encontró ningún agente compatible");
-  console.log("=== FIN getUserPreferredAgent ===");
-  return null;
+  // Usar la versión cacheada para obtener el agente, pasando el cliente Supabase
+  return getCachedUserPreferredAgent(agentId, userRole, supabase);
 }

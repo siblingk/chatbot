@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export async function getPrequoteData(sessionId: string, userId: string) {
   const cookieStore = cookies();
@@ -31,10 +32,16 @@ export async function hasPrequoteData(
   sessionId: string,
   userId: string
 ): Promise<boolean> {
+  // Acceder a cookies directamente, sin caché
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
   try {
+    // Revalidar la ruta de chat para asegurar que los datos estén actualizados
+    if (sessionId) {
+      revalidatePath(`/chat/${sessionId}`);
+    }
+
     const { data, error } = await supabase
       .from("prequotes")
       .select("id")

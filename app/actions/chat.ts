@@ -54,6 +54,7 @@ export async function getCurrentUser() {
 }
 
 export async function getStoredMessages(): Promise<Message[]> {
+  // Acceder a cookies directamente, sin caché
   const cookiesList = await cookies();
   const messages = cookiesList.get("chatMessages")?.value;
   return messages ? JSON.parse(messages) : [];
@@ -120,7 +121,16 @@ export async function updateMessages(messages: Message[]): Promise<void> {
     }
   }
 
-  revalidatePath("/");
+  // Revalidar rutas específicas para actualizar la caché
+  revalidatePath("/chat");
+
+  // Si hay mensajes, revalidar también la ruta específica de la sesión
+  if (messages.length > 0) {
+    const sessionId = messages[0].session_id;
+    if (sessionId) {
+      revalidatePath(`/chat/${sessionId}`);
+    }
+  }
 }
 
 export async function clearMessages(): Promise<void> {
@@ -476,10 +486,28 @@ export async function sendMessage(
       ]);
     }
 
-    return {
-      success: true,
-      message: responseMessage,
-    };
+    // Después de procesar la respuesta y antes de retornar
+    if (response.ok) {
+      // Revalidar las rutas de chat para actualizar la caché
+      revalidatePath("/chat");
+      revalidatePath(`/chat/${sessionId}`);
+
+      return {
+        success: true,
+        message: responseMessage,
+      };
+    } else {
+      console.error("Error en la respuesta del webhook:", response.status);
+
+      // Revalidar las rutas de chat para actualizar la caché incluso en caso de error
+      revalidatePath("/chat");
+      revalidatePath(`/chat/${sessionId}`);
+
+      return {
+        success: false,
+        message: "Lo siento, ocurrió un error al procesar tu mensaje.",
+      };
+    }
   } catch (error) {
     console.error("Error al enviar mensaje:", error);
     const t = await getTranslations("chat");

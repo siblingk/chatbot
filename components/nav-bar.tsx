@@ -89,7 +89,14 @@ export function NavBar() {
       }
     }
 
+    // Ejecutar la verificación inmediatamente
     loadChatStatus();
+
+    // Configurar un intervalo para verificar periódicamente
+    const intervalId = setInterval(loadChatStatus, 5000); // Verificar cada 5 segundos
+
+    // Limpiar el intervalo cuando el componente se desmonte
+    return () => clearInterval(intervalId);
   }, [sessionId, supabase]);
 
   // Verificar si existe información de prequote para este chat
@@ -104,7 +111,14 @@ export function NavBar() {
       setHasPrequote(hasData);
     }
 
+    // Ejecutar la verificación inmediatamente
     checkPrequote();
+
+    // Configurar un intervalo para verificar periódicamente
+    const intervalId = setInterval(checkPrequote, 5000); // Verificar cada 5 segundos
+
+    // Limpiar el intervalo cuando el componente se desmonte
+    return () => clearInterval(intervalId);
   }, [sessionId, userId]);
 
   // Determinar qué iconos mostrar según el estado

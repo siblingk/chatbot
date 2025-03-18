@@ -2,21 +2,14 @@
 
 import { MessageInput } from "@/components/chat/message-input";
 import { Message } from "@/types/chat";
-import { Bot, User } from "lucide-react";
+import { Bot, User, ArrowDown } from "lucide-react";
 import {
   sendMessage,
   updateMessages,
   createNewSessionId,
   getCurrentUser,
 } from "@/app/actions/chat";
-import {
-  useState,
-  useRef,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useTransition,
-} from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -64,17 +57,15 @@ export default function SharedChatContainer({
   const [effectiveAgentId, setEffectiveAgentId] = useState<string | undefined>(
     propAgentId
   );
-  const [isPending, startTransition] = useTransition();
+  // Estado para controlar la visibilidad del botón de scroll
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Referencia para evitar re-renderizados innecesarios
   const messagesRef = useRef<Message[]>([]);
 
-  // Determinar si estamos en modo sesión o en modo chat normal
   const isSessionMode = !!propSessionId;
 
-  // Verificar si el usuario está autenticado
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -88,7 +79,6 @@ export default function SharedChatContainer({
     checkAuth();
   }, []);
 
-  // Función para obtener el agentId de la sesión
   const getSessionAgentId = async () => {
     if (propAgentId) {
       setEffectiveAgentId(propAgentId);
@@ -100,11 +90,9 @@ export default function SharedChatContainer({
     console.log("=== INICIO getSessionAgentId ===");
     console.log("SessionId:", propSessionId);
 
-    // Si tenemos mensajes, buscar el agentId en ellos
     if (initialMessages && initialMessages.length > 0) {
       console.log("Buscando agentId en los mensajes iniciales...");
 
-      // Ordenar mensajes por fecha (más recientes primero)
       const sortedMessages = [...initialMessages].sort((a, b) => {
         const dateA =
           "created_at" in a
@@ -121,7 +109,6 @@ export default function SharedChatContainer({
         return dateB - dateA;
       });
 
-      // Buscar el primer mensaje que tenga metadata con agentId
       for (const message of sortedMessages) {
         if (
           "metadata" in message &&
@@ -139,7 +126,6 @@ export default function SharedChatContainer({
       console.log("No se encontró agentId en los mensajes");
     }
 
-    // Si no encontramos el agentId en los mensajes, intentar obtenerlo de la API
     try {
       console.log("Consultando API para obtener el agentId de la sesión...");
       const response = await fetch(
@@ -165,16 +151,13 @@ export default function SharedChatContainer({
     console.log("=== FIN getSessionAgentId ===");
   };
 
-  // Convertir los mensajes del historial al formato que usa el chat
   useEffect(() => {
     let formattedMessages: Message[] = [];
 
     if (isSessionMode && initialMessages.length > 0) {
-      // Convertir mensajes de ChatMessage a Message
       formattedMessages = (initialMessages as ChatMessage[]).flatMap((msg) => {
         const clientMessages: Message[] = [];
 
-        // Si hay input, agregar mensaje del usuario
         if (msg.input) {
           clientMessages.push({
             id: `${msg.id}-input`,
@@ -186,7 +169,6 @@ export default function SharedChatContainer({
           });
         }
 
-        // Si hay output, agregar mensaje del asistente
         if (msg.output) {
           clientMessages.push({
             id: `${msg.id}-output`,
@@ -201,43 +183,47 @@ export default function SharedChatContainer({
         return clientMessages;
       });
     } else {
-      // En modo chat normal, los mensajes ya están en el formato correcto
       formattedMessages = initialMessages as Message[];
     }
 
     setMessages(formattedMessages);
+    messagesRef.current = formattedMessages;
+
+    // Eliminar el desplazamiento automático al cargar mensajes iniciales
   }, [initialMessages, propSessionId, isSessionMode]);
 
-  // Obtener agentId cuando se carga el componente
   useEffect(() => {
     getSessionAgentId();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propSessionId, propAgentId]);
 
-  // Función para desplazarse al final del chat
   const scrollToBottom = () => {
     if (scrollRef.current) {
       try {
-        // Método 1: Establecer scrollTop directamente
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        // Usar un enfoque más directo y forzado para el desplazamiento
+        const scrollElement = scrollRef.current;
 
-        // Método 2: Usar scrollTo con behavior: "instant"
-        scrollRef.current.scrollTo({
-          top: scrollRef.current.scrollHeight,
-          behavior: "instant" as ScrollBehavior,
+        // Método 1: Establecer scrollTop directamente
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+
+        // Método 2: Usar setTimeout para asegurar que el DOM se ha actualizado
+        setTimeout(() => {
+          if (scrollElement) {
+            scrollElement.scrollTop = scrollElement.scrollHeight;
+          }
+        }, 10);
+
+        // Método 3: Usar requestAnimationFrame para sincronizar con el ciclo de renderizado
+        requestAnimationFrame(() => {
+          if (scrollElement) {
+            scrollElement.scrollTop = scrollElement.scrollHeight;
+          }
         });
 
-        // Método 3: Usar un enfoque alternativo con scrollIntoView
-        const lastChild = scrollRef.current.lastElementChild;
-        if (lastChild) {
-          lastChild.scrollIntoView({ behavior: "auto", block: "end" });
-        }
-
-        // Forzar un reflow para asegurar que el scroll se aplique correctamente
-        void scrollRef.current.offsetHeight;
+        // Forzar un reflow para asegurar que el scroll se aplique
+        void scrollElement.offsetHeight;
       } catch (error) {
         console.error("Error al hacer scroll:", error);
-        // Fallback simple si algo falla
+        // Fallback simple si los métodos anteriores fallan
         if (scrollRef.current) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
@@ -245,109 +231,49 @@ export default function SharedChatContainer({
     }
   };
 
-  // Desplazarse al final cuando cambian los mensajes o el estado de carga
-  // Usar useLayoutEffect para que el scroll ocurra antes de la pintura del navegador
-  useLayoutEffect(() => {
-    scrollToBottom();
-    // Programar múltiples intentos de scroll para asegurar que funcione
-    const scrollTimers = [
-      setTimeout(scrollToBottom, 0),
-      setTimeout(scrollToBottom, 50),
-      setTimeout(scrollToBottom, 100),
-      setTimeout(scrollToBottom, 200),
-    ];
-    // Actualizar la referencia para evitar re-renderizados
+  // Mantener la referencia de mensajes actualizada sin hacer scroll
+  useEffect(() => {
     messagesRef.current = messages;
-
-    // Limpiar los timers cuando se desmonte el componente
-    return () => {
-      scrollTimers.forEach(clearTimeout);
-    };
   }, [messages]);
 
-  // Efecto separado para isTyping para evitar re-renderizados innecesarios
-  useLayoutEffect(() => {
-    if (isTyping) {
-      scrollToBottom();
-      // Programar múltiples intentos de scroll para asegurar que funcione
-      const scrollTimers = [
-        setTimeout(scrollToBottom, 0),
-        setTimeout(scrollToBottom, 50),
-        setTimeout(scrollToBottom, 100),
-        setTimeout(scrollToBottom, 200),
-      ];
-
-      // Limpiar los timers cuando se desmonte el componente
-      return () => {
-        scrollTimers.forEach(clearTimeout);
-      };
+  // Añadir un efecto para desplazarse cuando cambia isTyping a false (mensaje recibido)
+  useEffect(() => {
+    // Solo hacer scroll cuando se recibe un mensaje (isTyping cambia de true a false)
+    if (isTyping === false && messages.length > 0) {
+      // Pequeño retraso para asegurar que el DOM se ha actualizado con el nuevo mensaje
+      setTimeout(scrollToBottom, 50);
     }
-  }, [isTyping]);
+  }, [isTyping, messages.length]);
 
-  // Observador de mutaciones para detectar cambios en el contenido del chat
+  // Añadir un efecto para detectar cuando el usuario ha desplazado hacia arriba
   useEffect(() => {
     if (!scrollRef.current) return;
 
-    // Crear un observador de mutaciones para detectar cambios en el DOM
-    const observer = new MutationObserver((mutations) => {
-      // Verificar si las mutaciones afectan al contenido del chat
-      const shouldScroll = mutations.some((mutation) => {
-        // Si se añaden nodos, probablemente sea un nuevo mensaje
-        if (mutation.addedNodes.length > 0) return true;
-
-        // Si cambia el contenido de texto, probablemente sea un mensaje que se está escribiendo
-        if (mutation.type === "characterData") return true;
-
-        // Si cambian los atributos de un elemento, podría ser un cambio de estilo o clase
-        if (
-          mutation.type === "attributes" &&
-          (mutation.target as Element).classList.contains("message")
-        )
-          return true;
-
-        return false;
-      });
-
-      // Solo hacer scroll si las mutaciones son relevantes
-      if (shouldScroll) {
-        scrollToBottom();
-        // Intentar nuevamente después de un breve retraso para asegurar que el contenido se haya renderizado completamente
-        setTimeout(scrollToBottom, 50);
+    const handleScroll = () => {
+      if (scrollRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        // Mostrar el botón cuando el usuario ha desplazado hacia arriba más de 200px desde el final
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+        setShowScrollButton(!isNearBottom);
       }
-    });
-
-    // Configurar el observador para observar cambios en los hijos y el contenido
-    observer.observe(scrollRef.current, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["class", "style"],
-    });
-
-    // Limpiar el observador cuando se desmonta el componente
-    return () => observer.disconnect();
-  }, []);
-
-  // Asegurarse de que el scroll funcione cuando la ventana cambia de tamaño
-  useEffect(() => {
-    const handleResize = () => {
-      scrollToBottom();
-      // Intentar nuevamente después de un breve retraso para asegurar que el contenido se haya reajustado
-      setTimeout(scrollToBottom, 100);
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    const scrollElement = scrollRef.current;
+    scrollElement.addEventListener("scroll", handleScroll);
+
+    return () => {
+      if (scrollElement) {
+        scrollElement.removeEventListener("scroll", handleScroll);
+      }
+    };
   }, []);
 
-  // Función para hacer vibrar el dispositivo con un patrón más agradable
   const vibrate = (pattern: number[] = [50, 30, 80]) => {
     if (typeof window !== "undefined" && navigator.vibrate) {
       navigator.vibrate(pattern);
     }
   };
 
-  // Función para obtener los parámetros de la URL
   const getUrlParams = () => {
     const params: Record<string, string> = {};
     if (effectiveAgentId) {
@@ -361,17 +287,14 @@ export default function SharedChatContainer({
     if (!messageText || typeof messageText !== "string" || !messageText.trim())
       return;
 
-    // Cambiar el estado a "sending" y vibrar con un patrón suave
     setChatState("sending");
     vibrate([40, 20, 40]);
     setErrorMessage(null);
 
-    // Determinar el sessionId a usar
     const sessionId = isSessionMode
       ? propSessionId!
       : await createNewSessionId();
 
-    // Crear el mensaje del usuario
     const newMessage: Message = {
       id: generateUUID(),
       text: messageText,
@@ -381,26 +304,23 @@ export default function SharedChatContainer({
       input: messageText,
     };
 
-    // Actualizar el estado local inmediatamente para mostrar el mensaje del usuario
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
 
-    // Desplazarse al fondo inmediatamente después de mostrar el mensaje del usuario
+    // Desplazamiento al enviar un mensaje (mantener este scroll)
     scrollToBottom();
-    setTimeout(scrollToBottom, 0);
+    // Segundo intento después de un breve retraso
     setTimeout(scrollToBottom, 50);
-    setTimeout(scrollToBottom, 100);
-    setTimeout(scrollToBottom, 200);
 
-    // Mostrar el indicador de carga
     setIsTyping(true);
 
-    // Obtener los parámetros de la URL
     const urlParams = getUrlParams();
 
-    // Enviar el mensaje al servidor
+    if (!isSessionMode && isAuthenticated) {
+      router.prefetch(`/chat/${sessionId}`);
+    }
+
     try {
-      // Enviar el mensaje al servidor con los parámetros de la URL
       const response = await sendMessage(
         sessionId,
         messageText,
@@ -409,10 +329,8 @@ export default function SharedChatContainer({
       );
 
       if (response.success) {
-        // Vibrar con un patrón más pronunciado al recibir respuesta
         vibrate([50, 30, 100]);
 
-        // Crear el mensaje del bot
         const botMessage: Message = {
           id: generateUUID(),
           text: response.message,
@@ -422,35 +340,23 @@ export default function SharedChatContainer({
           input: "",
         };
 
-        // Ocultar el indicador de carga, mostrar el mensaje del bot y volver al estado "idle"
         setIsTyping(false);
         setChatState("idle");
 
-        // Actualizar el estado de los mensajes con el mensaje del bot
         const messagesWithBot = [...updatedMessages, botMessage];
         setMessages(messagesWithBot);
 
-        // Desplazarse al fondo después de mostrar el mensaje del bot
+        // Desplazamiento al recibir respuesta (mantener este scroll)
         scrollToBottom();
-        setTimeout(scrollToBottom, 0);
-        setTimeout(scrollToBottom, 50);
+        // Segundo intento después de un breve retraso
         setTimeout(scrollToBottom, 100);
-        setTimeout(scrollToBottom, 200);
-        setTimeout(scrollToBottom, 300);
-        setTimeout(scrollToBottom, 500);
 
-        // Actualizar la base de datos con todos los mensajes
         await updateMessages(messagesWithBot);
 
-        // Si no estamos en modo sesión y el usuario está autenticado, redirigir a la página de chat con sessionId
         if (!isSessionMode && isAuthenticated) {
-          // Usar startTransition para una transición más fluida
-          startTransition(() => {
-            router.push(`/chat/${sessionId}`);
-          });
+          router.replace(`/chat/${sessionId}`, { scroll: false });
         }
       } else {
-        // Si hay un error en la respuesta, vibrar con un patrón de error
         vibrate([100, 50, 100, 50, 100]);
         setIsTyping(false);
         setChatState("error");
@@ -458,7 +364,6 @@ export default function SharedChatContainer({
       }
     } catch (error) {
       console.error("Error al enviar el mensaje:", error);
-      // Vibrar con un patrón de error
       vibrate([100, 50, 100, 50, 100]);
       setIsTyping(false);
       setChatState("error");
@@ -466,7 +371,6 @@ export default function SharedChatContainer({
     }
   };
 
-  // Función para obtener el texto del estado actual
   const getStateText = () => {
     switch (chatState) {
       case "sending":
@@ -489,56 +393,36 @@ export default function SharedChatContainer({
 
   const hasUserMessages = messages.some((message) => message.isUser);
 
-  // Memoizar el agentId para evitar re-renderizados innecesarios
   const memoizedAgentId = useMemo(() => effectiveAgentId, [effectiveAgentId]);
 
   return (
     <div
       className={cn(
-        "flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative",
-        isPending && "opacity-80 transition-opacity duration-300"
+        "flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative"
       )}
     >
-      {isPending && (
-        <div className="absolute inset-0 bg-background/20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="flex items-center space-x-2">
-            <div
-              className="w-2 h-2 bg-primary rounded-full animate-bounce"
-              style={{ animationDelay: "0ms" }}
-            />
-            <div
-              className="w-2 h-2 bg-primary rounded-full animate-bounce"
-              style={{ animationDelay: "150ms" }}
-            />
-            <div
-              className="w-2 h-2 bg-primary rounded-full animate-bounce"
-              style={{ animationDelay: "300ms" }}
-            />
-          </div>
-        </div>
-      )}
-
       <div
-        className="flex-1 max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-3rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent pb-24"
+        className="flex-1 max-h-[calc(100vh-5rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent pb-24 scroll-smooth"
         ref={scrollRef}
+        style={{ overscrollBehavior: "contain" }}
       >
-        {/* Tarjeta de bienvenida del agente - siempre visible en la parte superior */}
         <div className="container mx-auto max-w-3xl">
           <AgentWelcomeCard agentId={memoizedAgentId} />
         </div>
 
         <div className="container max-w-3xl mx-auto space-y-6">
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <div
               key={message.id}
               className={cn(
                 "flex items-start gap-3 mb-6 message",
-                message.isUser ? "justify-end" : "justify-start"
+                message.isUser ? "justify-end" : "justify-start",
+                index === messages.length - 1 ? "animate-fadeIn" : ""
               )}
             >
               <div
                 className={cn(
-                  "flex items-center justify-center w-7 h-7 rounded-full shrink-0",
+                  "flex items-center justify-center w-7 h-7 rounded-full shrink-0 shadow-sm",
                   message.isUser
                     ? "order-last bg-primary/90"
                     : "bg-muted-foreground/20"
@@ -553,14 +437,16 @@ export default function SharedChatContainer({
               <div className="space-y-1 max-w-[85%]">
                 <div
                   className={cn(
-                    "px-4 py-2.5 rounded-2xl text-sm",
+                    "px-4 py-2.5 rounded-2xl text-sm shadow-sm",
                     message.isUser
                       ? "bg-primary text-primary-foreground rounded-tr-none"
                       : "bg-muted rounded-tl-none"
                   )}
                 >
                   {message.isUser ? (
-                    message.text
+                    <p className="whitespace-pre-wrap break-words">
+                      {message.text}
+                    </p>
                   ) : (
                     <MarkdownRenderer
                       content={message.text}
@@ -580,13 +466,12 @@ export default function SharedChatContainer({
             </div>
           ))}
 
-          {/* Indicador de escritura */}
           {isTyping && (
-            <div className="flex items-start gap-3 mb-6 mr-auto">
-              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0">
+            <div className="flex items-start gap-3 mb-6 mr-auto animate-fadeIn">
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0 shadow-sm">
                 <Bot className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
-              <div className="px-4 py-3 bg-muted rounded-2xl rounded-tl-none">
+              <div className="px-4 py-3 bg-muted rounded-2xl rounded-tl-none shadow-sm">
                 <div className="flex items-center space-x-1.5">
                   <div
                     className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
@@ -607,7 +492,17 @@ export default function SharedChatContainer({
         </div>
       </div>
 
-      {/* Estado del chat - solo mostrar errores sin animaciones */}
+      {/* Botón flotante para desplazarse al final */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="fixed bottom-24 right-4 z-10 p-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-200 animate-fadeIn"
+          aria-label="Desplazarse al final"
+        >
+          <ArrowDown className="h-5 w-5" />
+        </button>
+      )}
+
       {chatState === "error" && (
         <div className="px-4 py-1.5 text-xs text-center text-destructive bg-destructive/10">
           {getStateText()}

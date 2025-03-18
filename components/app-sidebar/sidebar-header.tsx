@@ -8,20 +8,21 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarMenuAction,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useChat } from "@/contexts/chat-context";
 import { useUserRole } from "@/hooks/useUserRole";
 import { OrganizationSelector } from "./organization-selector";
-import { useOrganization } from "@/contexts/organization-context";
 
 export function SidebarHeader() {
   const t = useTranslations();
   const router = useRouter();
+  const pathname = usePathname();
   const { clearChat } = useChat();
   const { isAdmin } = useUserRole();
-  const { currentOrganization } = useOrganization();
+
+  // Verificar si estamos en modo shop (dentro de una organización)
+  const isShopMode = pathname.includes("/organizations/");
 
   // Función para ir a la página principal con chat limpio
   const handleGoHome = async () => {
@@ -29,6 +30,29 @@ export function SidebarHeader() {
     router.push("/");
   };
 
+  // Si estamos en modo shop, solo mostramos el selector de organización para admins
+  if (isShopMode) {
+    return (
+      <Header>
+        <SidebarMenu>
+          {isAdmin ? (
+            <SidebarMenuItem>
+              <OrganizationSelector />
+            </SidebarMenuItem>
+          ) : (
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={() => router.push("/")}>
+                <Box />
+                <span>{t("app.title")}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+        </SidebarMenu>
+      </Header>
+    );
+  }
+
+  // En modo normal, mostramos el selector de organización para admins y el botón de nuevo chat
   return (
     <Header>
       <SidebarMenu>
@@ -37,17 +61,12 @@ export function SidebarHeader() {
             <SidebarMenuItem>
               <OrganizationSelector />
             </SidebarMenuItem>
-            <SidebarSeparator className="my-2" />
           </>
         ) : (
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleGoHome}>
               <Box />
-              <span>
-                {currentOrganization && isAdmin
-                  ? currentOrganization.name
-                  : t("app.title")}
-              </span>
+              <span>{t("app.title")}</span>
             </SidebarMenuButton>
             <SidebarMenuAction onClick={handleGoHome}>
               <Plus />

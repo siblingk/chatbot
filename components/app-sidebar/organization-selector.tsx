@@ -1,34 +1,53 @@
-"use client";
-
 import { useTranslations } from "next-intl";
-import { Building, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GalleryVerticalEnd, Check, ChevronsUpDown } from "lucide-react";
 import { useOrganization } from "@/contexts/organization-context";
-import { useSettingsModal } from "@/contexts/settings-modal-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SidebarMenuButton } from "@/components/ui/sidebar";
 
 export function OrganizationSelector() {
-  const tOrg = useTranslations("organizations");
-  const { openSettingsModal, setActiveTab } = useSettingsModal();
-  const { currentOrganization } = useOrganization();
+  const t = useTranslations();
 
-  const handleOpenSettings = () => {
-    setActiveTab("organizations");
-    openSettingsModal();
-  };
+  const { currentOrganization, organizations, setCurrentOrganization } =
+    useOrganization();
 
   return (
-    <Button
-      variant="ghost"
-      onClick={handleOpenSettings}
-      className="w-full justify-between px-2"
-    >
-      <div className="flex items-center gap-2 truncate">
-        <Building className="h-4 w-4 shrink-0" />
-        <span className="truncate">
-          {currentOrganization ? currentOrganization.name : tOrg("select")}
-        </span>
-      </div>
-      <Settings className="h-4 w-4 shrink-0 opacity-50" />
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SidebarMenuButton
+          size="lg"
+          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+        >
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <GalleryVerticalEnd className="size-4" />
+          </div>
+          <div className="flex flex-col gap-0.5 leading-none">
+            <span className="font-semibold">{t("organizations.title")}</span>
+            <span className="">{currentOrganization?.name}</span>
+          </div>
+          <ChevronsUpDown className="ml-auto" />
+        </SidebarMenuButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-[--radix-dropdown-menu-trigger-width]"
+        align="start"
+      >
+        {organizations?.map((org) => (
+          <DropdownMenuItem
+            key={org.id}
+            onSelect={() => setCurrentOrganization(org)}
+          >
+            {org.name}{" "}
+            {currentOrganization?.id === org.id && (
+              <Check className="ml-auto" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

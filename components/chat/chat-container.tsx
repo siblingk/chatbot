@@ -194,6 +194,7 @@ export default function SharedChatContainer({
 
   useEffect(() => {
     getSessionAgentId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propSessionId, propAgentId]);
 
   const scrollToBottom = () => {

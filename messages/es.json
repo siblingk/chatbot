@@ -489,7 +489,10 @@
     "create": "Crear",
     "update": "Actualizar",
     "close": "Cerrar",
-    "back": "Regresar"
+    "back": "Regresar",
+    "remove": "Eliminar",
+    "view": "Ver",
+    "actions": "Acciones"
   },
   "chat": {
     "title": "Chat",

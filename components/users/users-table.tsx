@@ -51,7 +51,6 @@ export function UsersTable({
   users,
   columns = [],
   onUpdateUserRole,
-  onRemoveUser,
 }: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 

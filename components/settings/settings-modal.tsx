@@ -99,6 +99,7 @@ export function SettingsModal({
   const { isOpen, closeSettingsModal, activeTab, setActiveTab } =
     useSettingsModal();
   const t = useTranslations("settings");
+  const torg = useTranslations("organizations");
   const tLanguage = useTranslations("language");
   const tTheme = useTranslations("theme");
   const tNotifications = useTranslations("notifications");
@@ -156,7 +157,7 @@ export function SettingsModal({
       options.push(
         {
           value: "organizations",
-          label: t("title"),
+          label: torg("title"),
           icon: Building,
         },
         {
@@ -190,7 +191,7 @@ export function SettingsModal({
     }
 
     return options;
-  }, [isAdmin, t]);
+  }, [isAdmin, t, torg]);
 
   // Asegurarse de que el tab activo sea válido para el rol del usuario
   useEffect(() => {

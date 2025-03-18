@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Loader2, Building, Store, Plus, Trash } from "lucide-react";
+import {
+  Loader2,
+  Building,
+  Store,
+  Plus,
+  Trash,
+  MoreHorizontal,
+  Pencil,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { OrganizationWithRole } from "@/types/organization";
 import { Shop } from "@/types/shops";
@@ -12,6 +20,7 @@ import {
   deleteOrganization,
   assignShopToOrganization,
   deleteShop,
+  updateOrganization,
 } from "@/app/actions/organizations";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -44,6 +53,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface OrganizationsTabProps {
   organizations: OrganizationWithRole[];
@@ -61,7 +76,6 @@ export function OrganizationsTab({
   const [name, setName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedShopId, setSelectedShopId] = useState("");
   const [selectedOrgId, setSelectedOrgId] = useState("");
@@ -77,6 +91,10 @@ export function OrganizationsTab({
     null
   );
   const [shopToDelete, setShopToDelete] = useState<Shop | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [orgToEdit, setOrgToEdit] = useState<OrganizationWithRole | null>(null);
+  const [newName, setNewName] = useState("");
 
   const handleCreateOrganization = async () => {
     if (!name.trim()) {
@@ -113,7 +131,6 @@ export function OrganizationsTab({
 
     try {
       setIsDeleting(true);
-      setDeleteId(confirmDeleteOrgId);
 
       const result = await deleteOrganization(confirmDeleteOrgId);
 
@@ -129,7 +146,6 @@ export function OrganizationsTab({
       toast.error(t("common.error"));
     } finally {
       setIsDeleting(false);
-      setDeleteId(null);
       setConfirmDeleteOrgId(null);
       setOrgToDelete(null);
     }
@@ -200,6 +216,38 @@ export function OrganizationsTab({
       setDeleteShopId(null);
       setConfirmDeleteShopId(null);
       setShopToDelete(null);
+    }
+  };
+
+  const handleEditButtonClick = (org: OrganizationWithRole) => {
+    setOrgToEdit(org);
+    setNewName(org.name);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateOrg = async () => {
+    if (!orgToEdit) return;
+    if (!newName.trim()) {
+      toast.error(t("common.required"));
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const result = await updateOrganization(orgToEdit.id, { name: newName });
+
+      if (result.success) {
+        toast.success(tOrg("updateSuccess"));
+        setEditDialogOpen(false);
+        router.refresh();
+      } else {
+        toast.error(result.error || t("common.error"));
+      }
+    } catch (error) {
+      console.error("Error al actualizar organización:", error);
+      toast.error(t("common.error"));
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -332,19 +380,29 @@ export function OrganizationsTab({
                       {org.name}
                     </CardTitle>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDeleteButtonClick(org)}
-                    disabled={isDeleting && deleteId === org.id}
-                  >
-                    {isDeleting && deleteId === org.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">{t("common.actions")}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleEditButtonClick(org)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t("common.edit")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDeleteButtonClick(org)}
+                      >
+                        <Trash className="mr-2 h-4 w-4" />
+                        {t("common.delete")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardHeader>
               <CardContent>
@@ -458,6 +516,34 @@ export function OrganizationsTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Sheet open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{tOrg("edit")}</SheetTitle>
+            <SheetDescription>{tOrg("editDescription")}</SheetDescription>
+          </SheetHeader>
+          <div className="py-6">
+            <Label htmlFor="name">{tOrg("name")}</Label>
+            <Input
+              id="name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+          <SheetFooter>
+            <Button
+              type="submit"
+              onClick={handleUpdateOrg}
+              disabled={isUpdating}
+            >
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("common.save")}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

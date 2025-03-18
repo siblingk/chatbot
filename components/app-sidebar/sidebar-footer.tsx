@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, ChevronUp, LogIn, Bot, Building } from "lucide-react";
+import { Settings, ChevronUp, LogIn, Bot } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {

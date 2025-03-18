@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Users, Building, Trash } from "lucide-react";
+import { MoreHorizontal, Users, Building, Trash, Pencil } from "lucide-react";
 import { OrganizationWithRole } from "@/types/organization";
 import { useState } from "react";
 import {
@@ -29,10 +29,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deleteOrganization } from "@/app/actions/organizations";
+import {
+  deleteOrganization,
+  updateOrganization,
+} from "@/app/actions/organizations";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 interface OrganizationsListProps {
   organizations: OrganizationWithRole[];
@@ -45,10 +59,49 @@ export function OrganizationsList({ organizations }: OrganizationsListProps) {
   const [organizationToDelete, setOrganizationToDelete] =
     useState<OrganizationWithRole | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [organizationToEdit, setOrganizationToEdit] =
+    useState<OrganizationWithRole | null>(null);
+  const [newName, setNewName] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleDeleteClick = (organization: OrganizationWithRole) => {
     setOrganizationToDelete(organization);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (organization: OrganizationWithRole) => {
+    setOrganizationToEdit(organization);
+    setNewName(organization.name);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!organizationToEdit) return;
+    if (!newName.trim()) {
+      toast.error(t("common.required"));
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const result = await updateOrganization(organizationToEdit.id, {
+        name: newName,
+      });
+
+      if (result.success) {
+        toast.success(t("organizations.updateSuccess"));
+        setEditDialogOpen(false);
+        router.refresh();
+      } else {
+        toast.error(result.error || t("common.error"));
+      }
+    } catch (error) {
+      console.error("Error al actualizar organización:", error);
+      toast.error(t("common.error"));
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -102,6 +155,12 @@ export function OrganizationsList({ organizations }: OrganizationsListProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {org.role === "admin" && (
+                    <DropdownMenuItem onClick={() => handleEditClick(org)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      {t("common.edit")}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href={`/organizations/${org.id}/members`}>
                       <Users className="mr-2 h-4 w-4" />
@@ -169,6 +228,33 @@ export function OrganizationsList({ organizations }: OrganizationsListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("organizations.edit")}</DialogTitle>
+            <DialogDescription>
+              {t("organizations.editDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">{t("organizations.name")}</Label>
+              <Input
+                id="name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

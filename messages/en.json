@@ -489,7 +489,8 @@
     "close": "Close",
     "back": "Back",
     "remove": "Remove",
-    "view": "View"
+    "view": "View",
+    "actions": "Actions"
   },
   "chat": {
     "title": "Chat",

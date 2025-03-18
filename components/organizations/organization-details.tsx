@@ -36,6 +36,7 @@ import {
   ArrowRight,
   Store,
   Link,
+  MoreHorizontal,
 } from "lucide-react";
 import { Organization, OrganizationRole, Shop } from "@/types/organization";
 import {
@@ -45,6 +46,12 @@ import {
   deleteShop,
   removeShopFromOrganization,
 } from "@/app/actions/organizations";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface OrganizationDetailsProps {
   organization: Organization;
@@ -222,24 +229,27 @@ export function OrganizationDetails({
           <h1 className="text-2xl font-bold">{organization.name}</h1>
         </div>
         {isAdmin && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditDialogOpen(true)}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              {t("common.edit")}
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash className="h-4 w-4 mr-2" />
-              {t("common.delete")}
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">{t("common.actions")}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                {t("common.edit")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                {t("common.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 

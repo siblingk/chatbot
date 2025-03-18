@@ -516,7 +516,7 @@
     "welcomeTitle": "Welcome to your new conversation!",
     "welcomeMessage": "This is a new chat session. Type your first message to get started.",
     "retry": "Retry",
-    "startQuotation": "Start Quotation",
+    "startQuotation": "I want a quote",
     "quotationMessage": "I want a quote for a repair job.",
     "agentNotActive": "The selected agent is currently not active.",
     "agentNotFound": "Agent not found.",

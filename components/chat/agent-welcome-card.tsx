@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { getUserPreferredAgent } from "@/app/actions/agents";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { MarkdownRenderer } from "../ui/markdown-renderer";
 
 interface AgentWelcomeCardProps {
   agentId?: string;
@@ -94,13 +95,9 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
       className="transition-all duration-300"
       style={{ minHeight: CARD_MIN_HEIGHT, opacity: isLoading ? 0.7 : 1 }}
     >
-      <Card className="mb-6 bg-gradient-to-br from-sidebar to-sidebar/90 text-center p-0 border border-primary/10 shadow-lg font-normal tracking-wide rounded-xl overflow-hidden h-full relative">
-        <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-primary/5 opacity-70" />
-
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
+      <Card className="mb-6 text-justify  p-0 border-none shadow-none font-normal tracking-wide overflow-hidden h-full relative">
         <CardHeader className="py-5 relative">
-          <CardTitle className="text-lg flex items-center justify-center gap-3 text-primary">
+          <CardTitle className="text-xl flex items-center justify-center  gap-3 mb-2 w-fit px-4 py-3 mx-auto rounded-full text-primary">
             <motion.div
               animate={{
                 rotate: [0, 5, 0, -5, 0],
@@ -125,16 +122,8 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="pb-5 px-6 relative">
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-            {messageToShow}
-          </p>
-
-          <motion.div
-            className="w-16 h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent rounded-full mx-auto mt-4"
-            animate={{ opacity: [0.3, 0.7, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+        <CardContent className="pt-4 text-sm relative bg-sidebar">
+          <MarkdownRenderer content={messageToShow} />
         </CardContent>
       </Card>
     </motion.div>

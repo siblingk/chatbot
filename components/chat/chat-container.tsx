@@ -15,8 +15,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { generateUUID } from "@/utils/uuid";
 import { cn } from "@/lib/utils";
-import { AgentWelcomeCard } from "@/components/chat/agent-welcome-card";
+
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { AgentWelcomeCard } from "./agent-welcome-card";
 
 interface ChatMessage {
   id: string;

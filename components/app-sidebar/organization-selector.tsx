@@ -1,5 +1,4 @@
-import { useTranslations } from "next-intl";
-import { GalleryVerticalEnd, Check, ChevronsUpDown } from "lucide-react";
+import { Building, Check, ChevronsUpDown } from "lucide-react";
 import { useOrganization } from "@/contexts/organization-context";
 import {
   DropdownMenu,
@@ -7,33 +6,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarMenuButton } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 export function OrganizationSelector() {
-  const t = useTranslations();
-
   const { currentOrganization, organizations, setCurrentOrganization } =
     useOrganization();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <SidebarMenuButton
-          size="lg"
-          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex justify-between items-center gap-1 h-8 w-full px-2"
         >
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <GalleryVerticalEnd className="size-4" />
+          <div className="flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            <span className="font-medium truncate">
+              {currentOrganization?.name}
+            </span>
           </div>
-          <div className="flex flex-col gap-0.5 leading-none">
-            <span className="font-semibold">{t("organizations.title")}</span>
-            <span className="">{currentOrganization?.name}</span>
-          </div>
-          <ChevronsUpDown className="ml-auto" />
-        </SidebarMenuButton>
+          <ChevronsUpDown className="h-4 w-4 opacity-50" />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[--radix-dropdown-menu-trigger-width]"
+        className="w-[--radix-dropdown-menu-trigger-width] min-w-[180px]"
         align="start"
       >
         {organizations?.map((org) => (
@@ -41,9 +38,9 @@ export function OrganizationSelector() {
             key={org.id}
             onSelect={() => setCurrentOrganization(org)}
           >
-            {org.name}{" "}
+            <span className="truncate">{org.name}</span>
             {currentOrganization?.id === org.id && (
-              <Check className="ml-auto" />
+              <Check className="ml-auto h-4 w-4" />
             )}
           </DropdownMenuItem>
         ))}

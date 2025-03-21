@@ -26,6 +26,18 @@ export const createUserColumns = (t: any): ColumnDef<User>[] => [
     cell: ({ row, table }) => {
       const user = row.original;
       const value = row.getValue("role") as string;
+      const isSuperAdmin = user.is_super_admin;
+
+      // Si es super_admin y tiene la bandera de is_super_admin, mostrar un badge especial
+      if (isSuperAdmin || value === "super_admin") {
+        return (
+          <div className="flex items-center space-x-2">
+            <Badge className="bg-red-500 hover:bg-red-600">
+              {t("super_admin")}
+            </Badge>
+          </div>
+        );
+      }
 
       return (
         <div className="flex items-center space-x-2">
@@ -36,12 +48,15 @@ export const createUserColumns = (t: any): ColumnDef<User>[] => [
               table.options.meta?.onRoleChange?.(user.id, newRole);
             }}
           >
-            <SelectTrigger className="w-[110px]">
+            <SelectTrigger className="w-[130px]">
               <SelectValue placeholder={t("selectRole")} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="super_admin">{t("super_admin")}</SelectItem>
               <SelectItem value="admin">{t("admin")}</SelectItem>
+              <SelectItem value="colaborador">{t("colaborador")}</SelectItem>
               <SelectItem value="user">{t("user")}</SelectItem>
+              <SelectItem value="shop">{t("shop")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -29,7 +29,10 @@ export function useUserRole() {
   return {
     role,
     loading,
+    isSuperAdmin: role === "super_admin",
     isAdmin: role === "admin",
+    isColaborador: role === "colaborador",
+    isUser: role === "user",
     isShop: role === "shop",
   };
 }

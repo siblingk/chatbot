@@ -18,7 +18,7 @@ const settingSchema = z.object({
   contact_required: z.boolean(),
   lead_assignment_mode: z.enum(["automatic", "manual"]),
   follow_up_enabled: z.boolean(),
-  price_source: z.enum(["ai", "dcitelly_api"]),
+  price_source: z.enum(["ai", "dcitelly_api", "manual"]),
   template_id: z.string().nullable().optional(),
 });
 

@@ -11,18 +11,37 @@ import { OrganizationWithRole } from "@/types/organization";
 export async function getUserOrganizations(): Promise<OrganizationWithRole[]> {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
+  const userId = (await supabase.auth.getUser()).data.user?.id;
 
-  // Obtener todas las organizaciones (ya no filtramos por usuario)
-  const { data, error } = await supabase.rpc("get_user_organizations", {
-    user_uuid: "00000000-0000-0000-0000-000000000000", // ID ficticio, ya no se usa
-  });
-
-  if (error) {
-    console.error("Error al obtener organizaciones:", error);
+  if (!userId) {
     return [];
   }
 
-  return data || [];
+  try {
+    // Consultar directamente la tabla organizations
+    const { data: organizations, error: orgError } = await supabase
+      .from("organizations")
+      .select("*");
+
+    if (orgError) {
+      console.error("Error al obtener organizations:", orgError);
+      return [];
+    }
+
+    // No consultamos la tabla organization_users para evitar recursión infinita
+    // Asignamos un rol por defecto a todas las organizaciones
+    return organizations.map((org) => ({
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      created_at: org.created_at,
+      updated_at: org.updated_at,
+      role: "admin" as const, // Asignamos rol admin por defecto
+    }));
+  } catch (error) {
+    console.error("Error en getUserOrganizations:", error);
+    return [];
+  }
 }
 
 /**
@@ -41,21 +60,20 @@ function generateSlug(text: string): string {
 /**
  * Crea una nueva organización
  */
-export async function createOrganization(name: string) {
+export async function createOrganization(name: string, slug?: string) {
   try {
     const cookieStore = cookies();
     const supabase = await createClient(cookieStore);
 
-    // Generar slug a partir del nombre
-    const slug = generateSlug(name);
+    // Generar slug a partir del nombre si no se proporciona
+    const finalSlug = slug || generateSlug(name);
 
     // Crear la organización
     const { data: organization, error: orgError } = await supabase
       .from("organizations")
       .insert({
         name,
-        slug,
-        shops: [],
+        slug: finalSlug,
       })
       .select()
       .single();
@@ -297,25 +315,41 @@ export async function addUserToOrganization(
       return { success: false, error: "Usuario no encontrado" };
     }
 
-    // Agregar el usuario a la organización
-    const { error: memberError } = await supabase
-      .from("organization_members")
-      .insert({
-        organization_id: organizationId,
-        user_id: userData.id,
-        role,
-      });
+    // Agregar el usuario a la organización con la nueva función RPC
+    const { error: updateError } = await supabase.rpc(
+      "add_user_to_organization",
+      {
+        p_user_id: userData.id,
+        p_org_id: organizationId,
+        p_role: role,
+      }
+    );
 
-    if (memberError) {
-      console.error("Error al agregar miembro:", memberError);
-      return { success: false, error: "Error al agregar miembro" };
+    if (updateError) {
+      console.error("Error al agregar usuario a la organización:", updateError);
+      return {
+        success: false,
+        error: "Error al agregar usuario a la organización",
+      };
     }
 
-    revalidatePath(`/organizations/${organizationId}/members`);
-    return { success: true };
+    revalidatePath(`/organizations/${organizationId}`);
+    return {
+      success: true,
+      data: {
+        id: userData.id,
+        user_id: userData.id,
+        email,
+        role,
+        created_at: new Date().toISOString(),
+      },
+    };
   } catch (error) {
-    console.error("Error al agregar miembro:", error);
-    return { success: false, error: "Error al agregar miembro" };
+    console.error("Error al agregar usuario a la organización:", error);
+    return {
+      success: false,
+      error: "Error al agregar usuario a la organización",
+    };
   }
 }
 
@@ -331,19 +365,38 @@ export async function updateUserRole(
     const cookieStore = cookies();
     const supabase = await createClient(cookieStore);
 
+    // Verificar que el usuario pertenezca a la organización
+    const { data: userToUpdate, error: userCheckError } = await supabase
+      .from("users")
+      .select("role, organization_id")
+      .eq("id", userId)
+      .eq("organization_id", organizationId)
+      .single();
+
+    if (userCheckError || !userToUpdate) {
+      console.error(
+        "Usuario no encontrado en la organización:",
+        userCheckError
+      );
+      return {
+        success: false,
+        error: "Usuario no encontrado en la organización",
+      };
+    }
+
     // Actualizar el rol del usuario
     const { error } = await supabase
-      .from("organization_members")
+      .from("users")
       .update({ role })
-      .eq("organization_id", organizationId)
-      .eq("user_id", userId);
+      .eq("id", userId)
+      .eq("organization_id", organizationId);
 
     if (error) {
       console.error("Error al actualizar rol:", error);
       return { success: false, error: "Error al actualizar rol" };
     }
 
-    revalidatePath(`/organizations/${organizationId}/members`);
+    revalidatePath(`/organizations/${organizationId}`);
     return { success: true };
   } catch (error) {
     console.error("Error al actualizar rol:", error);
@@ -362,23 +415,28 @@ export async function removeUserFromOrganization(
     const cookieStore = cookies();
     const supabase = await createClient(cookieStore);
 
-    // Eliminar el miembro de la organización
-    const { error } = await supabase
-      .from("organization_members")
-      .delete()
-      .eq("organization_id", organizationId)
-      .eq("user_id", userId);
+    // Eliminar la asociación del usuario con la organización
+    const { error } = await supabase.rpc("remove_user_from_organization", {
+      p_user_id: userId,
+      p_org_id: organizationId,
+    });
 
     if (error) {
-      console.error("Error al eliminar miembro:", error);
-      return { success: false, error: "Error al eliminar miembro" };
+      console.error("Error al eliminar usuario de la organización:", error);
+      return {
+        success: false,
+        error: "Error al eliminar usuario de la organización",
+      };
     }
 
-    revalidatePath(`/organizations/${organizationId}/members`);
+    revalidatePath(`/organizations/${organizationId}`);
     return { success: true };
   } catch (error) {
-    console.error("Error al eliminar miembro:", error);
-    return { success: false, error: "Error al eliminar miembro" };
+    console.error("Error al eliminar usuario de la organización:", error);
+    return {
+      success: false,
+      error: "Error al eliminar usuario de la organización",
+    };
   }
 }
 
@@ -844,5 +902,93 @@ export async function assignShopToOrganization(
         error instanceof Error ? error.message : "Error desconocido"
       }`,
     };
+  }
+}
+
+/**
+ * Función para gestionar el acceso de un usuario a una tienda
+ */
+export async function manageUserShopAccess({
+  userId,
+  shopId,
+  canView,
+  canEdit,
+}: {
+  userId: string;
+  shopId: string;
+  canView: boolean;
+  canEdit: boolean;
+}) {
+  try {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    // Verificar si el usuario actual tiene permisos
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    // Obtener el usuario actual
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("role, is_super_admin")
+      .eq("id", session.session.user.id)
+      .single();
+
+    // Solo los administradores pueden modificar accesos
+    if (
+      !currentUser?.is_super_admin &&
+      currentUser?.role !== "admin" &&
+      currentUser?.role !== "super_admin"
+    ) {
+      return { success: false, error: "No autorizado" };
+    }
+
+    // Verificar si ya existe un registro de acceso
+    const { data: existingAccess } = await supabase
+      .from("user_shop_access")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("shop_id", shopId)
+      .single();
+
+    if (existingAccess) {
+      // Actualizar el acceso existente
+      const { error } = await supabase
+        .from("user_shop_access")
+        .update({
+          can_view: canView,
+          can_edit: canEdit,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingAccess.id);
+
+      if (error) {
+        console.error("Error al actualizar acceso:", error);
+        return { success: false, error: error.message };
+      }
+    } else {
+      // Crear un nuevo registro de acceso
+      const { error } = await supabase.from("user_shop_access").insert([
+        {
+          user_id: userId,
+          shop_id: shopId,
+          can_view: canView,
+          can_edit: canEdit,
+        },
+      ]);
+
+      if (error) {
+        console.error("Error al crear acceso:", error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return { success: false, error: "Error inesperado" };
   }
 }

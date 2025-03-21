@@ -2,8 +2,8 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { AppRole } from "@/types/auth";
 
 export interface User {
   id: string;
@@ -12,6 +12,7 @@ export interface User {
   created_at: string;
   last_sign_in_at: string | null;
   status: "active" | "inactive";
+  is_super_admin?: boolean;
 }
 
 export type ActionState = {
@@ -19,196 +20,317 @@ export type ActionState = {
     [key: string]: string[];
   };
   message?: string;
+  success?: boolean;
+  data?: User[];
 };
 
-// Schema de validación para los formularios de usuarios
-const userSchema = z.object({
-  email: z.string().email("El correo electrónico no es válido"),
-  role: z.enum(["user", "admin"], {
-    errorMap: () => ({ message: "El rol debe ser 'user' o 'admin'" }),
-  }),
-});
+/**
+ * Obtiene la lista de todos los usuarios
+ */
+export async function getUsersAction(): Promise<ActionState> {
+  try {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
 
+    // Verificar si el usuario actual tiene permisos
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return { success: false, message: "No autorizado", data: [] };
+    }
+
+    // Obtener el usuario actual
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("role, is_super_admin")
+      .eq("id", session.session.user.id)
+      .single();
+
+    // Solo los administradores pueden ver todos los usuarios
+    if (
+      !currentUser?.is_super_admin &&
+      currentUser?.role !== "admin" &&
+      currentUser?.role !== "super_admin" &&
+      currentUser?.role !== "colaborador"
+    ) {
+      return { success: false, message: "No autorizado", data: [] };
+    }
+
+    // Obtener todos los usuarios
+    const { data, error } = await supabase
+      .from("users")
+      .select(
+        "id, email, role, last_sign_in_at, created_at, updated_at, status, is_super_admin"
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error al obtener usuarios:", error);
+      return { success: false, message: "Error al obtener usuarios", data: [] };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return { success: false, message: "Error inesperado", data: [] };
+  }
+}
+
+/**
+ * Función compatible con versiones anteriores para obtener la lista de usuarios
+ */
 export async function getUsers(): Promise<User[]> {
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
   try {
-    // Primero intentamos obtener los datos con last_sign_in_at y status
-    const query = supabase
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return [];
+    }
+
+    // Obtener todos los usuarios
+    const { data, error } = await supabase
       .from("users")
-      .select("id, email, role, created_at, last_sign_in_at, status")
+      .select(
+        "id, email, role, created_at, last_sign_in_at, status, is_super_admin"
+      )
       .order("created_at", { ascending: false });
 
-    const { data: initialData, error } = await query;
-
-    // Si hay un error específico sobre la columna last_sign_in_at
-    if (error && error.message.includes("last_sign_in_at")) {
-      console.warn(
-        "Columna last_sign_in_at no encontrada, usando consulta alternativa"
-      );
-
-      // Intentamos de nuevo sin la columna problemática
-      const result = await supabase
-        .from("users")
-        .select("id, email, role, created_at, status")
-        .order("created_at", { ascending: false });
-
-      if (result.error) {
-        console.error("Error en consulta alternativa:", result.error);
-        return [];
-      }
-
-      // Añadimos un valor nulo para last_sign_in_at
-      const data = result.data.map((user) => ({
-        ...user,
-        last_sign_in_at: null,
-      }));
-
-      return data;
-    } else if (error) {
+    if (error) {
       console.error("Error al obtener usuarios:", error);
       return [];
     }
 
-    return initialData || [];
+    return data || [];
   } catch (error) {
     console.error("Error en getUsers:", error);
     return [];
   }
 }
 
-// Acción mejorada para crear/invitar usuarios
-export async function createUserAction(
-  prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  // Validar los datos del formulario
-  const validatedFields = userSchema.safeParse({
-    email: formData.get("email"),
-    role: formData.get("role"),
-  });
-
-  // Si hay errores de validación, retornarlos
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Error en los datos del formulario",
-    };
-  }
-
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
+/**
+ * Crea un nuevo usuario
+ */
+export async function createUserAction({
+  email,
+  role = "user",
+}: {
+  email: string;
+  role?: AppRole;
+}): Promise<ActionState> {
   try {
-    // Invitar al usuario a través de la API de Supabase
-    console.log("Invitando usuario:", validatedFields.data);
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
 
-    const { data, error } = await supabase.auth.admin.inviteUserByEmail(
-      validatedFields.data.email,
-      {
-        data: {
-          role: validatedFields.data.role,
-        },
-      }
-    );
+    // Verificar si el usuario actual tiene permisos
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return { success: false, message: "No autorizado" };
+    }
 
-    if (error) {
-      console.error("Error al invitar usuario:", error);
+    // Obtener el usuario actual
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("role, is_super_admin")
+      .eq("id", session.session.user.id)
+      .single();
+
+    // Solo los administradores pueden crear usuarios
+    if (
+      !currentUser?.is_super_admin &&
+      currentUser?.role !== "admin" &&
+      currentUser?.role !== "super_admin"
+    ) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    // Sólo un super_admin puede crear otro super_admin
+    if (
+      role === "super_admin" &&
+      !currentUser.is_super_admin &&
+      currentUser.role !== "super_admin"
+    ) {
       return {
-        message: `Error al invitar usuario: ${error.message}`,
+        success: false,
+        message:
+          "Solo los super administradores pueden crear otros super administradores",
       };
     }
 
-    // Asegurarse de que el usuario tenga el estado activo
-    if (data && data.user) {
+    // Validación
+    if (!email) {
+      return { success: false, message: "Email requerido" };
+    }
+
+    // Comprobar si el usuario ya existe
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingUser) {
+      return { success: false, message: "El usuario ya existe" };
+    }
+
+    // Crear usuario en Supabase Auth
+    const { data: newUser, error } = await supabase.auth.admin.createUser({
+      email,
+      password: generateRandomPassword(12),
+      email_confirm: true,
+      app_metadata: { role },
+      user_metadata: { role },
+    });
+
+    if (error) {
+      console.error("Error al crear usuario:", error);
+      return { success: false, message: error.message };
+    }
+
+    // Actualizar el rol y is_super_admin en la tabla users si es necesario
+    const updateData: { role?: AppRole; is_super_admin?: boolean } = {};
+
+    // Si el rol no es user o el trigger no lo manejó correctamente
+    if (role !== "user") {
+      updateData.role = role;
+    }
+
+    // Actualizar is_super_admin si es super_admin
+    if (role === "super_admin") {
+      updateData.is_super_admin = true;
+    }
+
+    if (Object.keys(updateData).length > 0) {
       const { error: updateError } = await supabase
         .from("users")
-        .update({
-          role: validatedFields.data.role,
-          status: "active",
-        })
-        .eq("id", data.user.id);
+        .update(updateData)
+        .eq("id", newUser.user.id);
 
       if (updateError) {
-        console.error("Error al actualizar estado del usuario:", updateError);
+        console.error("Error al actualizar usuario:", updateError);
+        // No fallamos la operación porque el usuario ya fue creado
       }
     }
 
     revalidatePath("/settings");
-    return { message: "Usuario invitado con éxito" };
+    return { success: true, message: "Usuario creado exitosamente" };
   } catch (error) {
-    console.error("Error en createUserAction:", error);
-    return {
-      message: `Error inesperado: ${
-        error instanceof Error ? error.message : "Error desconocido"
-      }`,
-    };
+    console.error("Error inesperado:", error);
+    return { success: false, message: "Error inesperado" };
   }
 }
 
-// Acción mejorada para actualizar usuarios
-export async function updateUserAction(
-  userId: string | number,
-  prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  console.log("updateUserAction recibió ID:", userId, "Tipo:", typeof userId);
-
-  // Validar que el ID no sea nulo o vacío
-  if (!userId) {
-    console.error("ID nulo o vacío para actualizar:", userId);
-    return {
-      message: "ID inválido para actualizar",
-    };
-  }
-
-  // Validar los datos del formulario
-  const validatedFields = userSchema.safeParse({
-    email: formData.get("email"),
-    role: formData.get("role"),
-  });
-
-  // Si hay errores de validación, retornarlos
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Error en los datos del formulario",
-    };
-  }
-
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
+/**
+ * Actualiza un usuario existente
+ */
+export async function updateUserAction({
+  id,
+  role,
+}: {
+  id: string;
+  role?: AppRole;
+}): Promise<ActionState> {
   try {
-    // Actualizar el usuario en la base de datos
-    console.log("Actualizando usuario:", userId, validatedFields.data);
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
 
-    const { error } = await supabase
+    // Verificar si el usuario actual tiene permisos
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    // Obtener el usuario actual
+    const { data: currentUser } = await supabase
       .from("users")
-      .update({
-        email: validatedFields.data.email,
-        role: validatedFields.data.role,
-        // Mantenemos el status actual
-      })
-      .eq("id", userId);
+      .select("role, is_super_admin")
+      .eq("id", session.session.user.id)
+      .single();
 
-    if (error) {
-      console.error("Error al actualizar usuario:", error);
+    // Solo los administradores pueden actualizar usuarios
+    if (
+      !currentUser?.is_super_admin &&
+      currentUser?.role !== "admin" &&
+      currentUser?.role !== "super_admin"
+    ) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    // Validación
+    if (!id) {
+      return { success: false, message: "ID de usuario requerido" };
+    }
+
+    // Verificar que el usuario existe
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id, role")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!existingUser) {
+      return { success: false, message: "Usuario no encontrado" };
+    }
+
+    // Si el usuario a editar es super_admin y el usuario actual no es super_admin
+    if (
+      existingUser.role === "super_admin" &&
+      !currentUser.is_super_admin &&
+      currentUser.role !== "super_admin"
+    ) {
       return {
-        message: `Error al actualizar el usuario: ${error.message}`,
+        success: false,
+        message: "No tienes permiso para editar a un super administrador",
       };
     }
 
+    // Actualizar el usuario
+    const updateData: { role?: AppRole; is_super_admin?: boolean } = {};
+    if (role) {
+      updateData.role = role;
+
+      // Actualizar is_super_admin en caso de asignar/quitar el rol super_admin
+      if (role === "super_admin") {
+        updateData.is_super_admin = true;
+      } else if (existingUser.role === "super_admin") {
+        updateData.is_super_admin = false;
+      }
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      const { error: updateError } = await supabase
+        .from("users")
+        .update(updateData)
+        .eq("id", id);
+
+      if (updateError) {
+        console.error("Error al actualizar usuario:", updateError);
+        return { success: false, message: updateError.message };
+      }
+    }
+
+    // También actualizar metadatos del usuario en auth.users
+    if (role) {
+      const { error: authUpdateError } =
+        await supabase.auth.admin.updateUserById(id, {
+          app_metadata: { role },
+          user_metadata: { role },
+        });
+
+      if (authUpdateError) {
+        console.error(
+          "Error al actualizar metadatos del usuario:",
+          authUpdateError
+        );
+        // No fallamos la operación si sólo falló la actualización de metadatos
+      }
+    }
+
     revalidatePath("/settings");
-    return { message: "Usuario actualizado con éxito" };
+    return { success: true, message: "Usuario actualizado exitosamente" };
   } catch (error) {
-    console.error("Error inesperado al actualizar usuario:", error);
-    return {
-      message: `Error inesperado: ${
-        error instanceof Error ? error.message : "Error desconocido"
-      }`,
-    };
+    console.error("Error inesperado:", error);
+    return { success: false, message: "Error inesperado" };
   }
 }
 
@@ -417,4 +539,254 @@ export async function toggleUserRoleAction(
       }`,
     };
   }
+}
+
+/**
+ * Genera una contraseña aleatoria segura con la longitud especificada
+ */
+function generateRandomPassword(length: number): string {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+  let password = "";
+
+  // Asegurar que hay al menos una mayúscula, una minúscula, un número y un carácter especial
+  password += chars.charAt(Math.floor(Math.random() * 26)); // mayúscula
+  password += chars.charAt(26 + Math.floor(Math.random() * 26)); // minúscula
+  password += chars.charAt(52 + Math.floor(Math.random() * 10)); // número
+  password += chars.charAt(62 + Math.floor(Math.random() * 14)); // especial
+
+  // Completar el resto de la contraseña aleatoriamente
+  for (let i = 4; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  // Mezclar los caracteres
+  return password
+    .split("")
+    .sort(() => 0.5 - Math.random())
+    .join("");
+}
+
+/**
+ * Envía una invitación por correo electrónico a un usuario para unirse a la plataforma
+ * con un rol específico.
+ */
+export async function inviteUserByEmailAction({
+  email,
+  role = "user",
+  organizationId = null,
+}: {
+  email: string;
+  role?: AppRole;
+  organizationId?: string | null;
+}): Promise<ActionState> {
+  try {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    // Verificar si el usuario actual tiene permisos
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    // Obtener el usuario actual
+    const { data: currentUser } = await supabase
+      .from("users")
+      .select("role, is_super_admin")
+      .eq("id", session.session.user.id)
+      .single();
+
+    // Solo los administradores pueden invitar usuarios
+    if (
+      !currentUser?.is_super_admin &&
+      currentUser?.role !== "admin" &&
+      currentUser?.role !== "super_admin"
+    ) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    // Sólo un super_admin puede invitar a otro super_admin
+    if (
+      role === "super_admin" &&
+      !currentUser.is_super_admin &&
+      currentUser.role !== "super_admin"
+    ) {
+      return {
+        success: false,
+        message:
+          "Solo los super administradores pueden invitar a otros super administradores",
+      };
+    }
+
+    // Validación
+    if (!email) {
+      return { success: false, message: "Email requerido" };
+    }
+
+    // Comprobar si el usuario ya existe
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingUser) {
+      // Si la organización está especificada, agregar al usuario existente a esa organización
+      if (organizationId) {
+        const { success, error } = await addUserToOrganization(
+          organizationId,
+          email,
+          role
+        );
+        if (!success) {
+          return {
+            success: false,
+            message: error || "Error al agregar usuario a la organización",
+          };
+        }
+        return {
+          success: true,
+          message: "Usuario añadido a la organización exitosamente",
+        };
+      }
+      return { success: false, message: "El usuario ya existe" };
+    }
+
+    // Enviar invitación por correo electrónico
+    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+      data: { role },
+    });
+
+    if (error) {
+      console.error("Error al invitar usuario:", error);
+      return { success: false, message: error.message };
+    }
+
+    // Si se especificó una organización, crear la relación
+    if (organizationId && data.user) {
+      const { success, error } = await addUserToOrganization(
+        organizationId,
+        email,
+        role
+      );
+      if (!success) {
+        console.error("Error al agregar usuario a la organización:", error);
+        // No fallamos la operación porque el usuario ya fue invitado
+      }
+    }
+
+    // Actualizar el rol y is_super_admin en la tabla users si es necesario
+    if (data.user) {
+      const updateData: { role?: AppRole; is_super_admin?: boolean } = {};
+
+      // Si el rol no es user
+      if (role !== "user") {
+        updateData.role = role;
+      }
+
+      // Actualizar is_super_admin si es super_admin
+      if (role === "super_admin") {
+        updateData.is_super_admin = true;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update(updateData)
+          .eq("id", data.user.id);
+
+        if (updateError) {
+          console.error("Error al actualizar usuario:", updateError);
+          // No fallamos la operación porque el usuario ya fue invitado
+        }
+      }
+    }
+
+    revalidatePath("/settings");
+    return { success: true, message: "Invitación enviada exitosamente" };
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return { success: false, message: "Error inesperado" };
+  }
+}
+
+// Si hay problemas con inviteUserByEmail, alternativa usando generateLink
+export async function generateInviteLink({
+  email,
+  role = "user",
+  organizationId = null,
+}: {
+  email: string;
+  role?: AppRole;
+  organizationId?: string | null;
+}): Promise<ActionState> {
+  try {
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    // Verificaciones de permisos y validación (similares a inviteUserByEmailAction)
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      return { success: false, message: "No autorizado" };
+    }
+
+    // Generar link de invitación
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: {
+        data: { role },
+      },
+    });
+
+    if (error) {
+      console.error("Error al generar enlace:", error);
+      return { success: false, message: error.message };
+    }
+
+    // Si se especificó una organización, crear la relación
+    if (organizationId && data.user) {
+      const { success, error: orgError } = await addUserToOrganization(
+        organizationId,
+        email,
+        role as string
+      );
+      if (!success) {
+        console.error("Error al agregar usuario a la organización:", orgError);
+        // No fallamos la operación porque el usuario ya fue invitado
+      }
+    }
+
+    revalidatePath("/settings");
+    return {
+      success: true,
+      message: "Enlace de invitación generado exitosamente",
+      data: data.user
+        ? [
+            {
+              id: data.user.id,
+              email: data.user.email || email,
+              role: role as string,
+              created_at: data.user.created_at || new Date().toISOString(),
+              last_sign_in_at: null,
+              status: "active",
+            },
+          ]
+        : [],
+    };
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return { success: false, message: "Error inesperado" };
+  }
+}
+
+// Función auxiliar para importar desde organizations.ts
+async function addUserToOrganization(
+  organizationId: string,
+  email: string,
+  role: string
+) {
+  const { addUserToOrganization: addUser } = await import("./organizations");
+  return addUser(organizationId, email, role);
 }

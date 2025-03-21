@@ -52,6 +52,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OrganizationUsers } from "@/components/organizations/organization-users";
 
 interface OrganizationDetailsProps {
   organization: Organization;
@@ -253,118 +254,128 @@ export function OrganizationDetails({
         )}
       </div>
 
-      <Tabs defaultValue="general">
+      <Tabs defaultValue="details" className="w-full">
         <TabsList>
-          <TabsTrigger value="general">
-            {t("organizations.general")}
-          </TabsTrigger>
-          <TabsTrigger value="shops">{t("shops.title")}</TabsTrigger>
+          <TabsTrigger value="details">{t("common.details")}</TabsTrigger>
+          <TabsTrigger value="users">{t("organizations.users")}</TabsTrigger>
+          <TabsTrigger value="shops">{t("organizations.shops")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="general" className="space-y-4">
+
+        <TabsContent value="details">
           <Card>
             <CardHeader>
-              <h3 className="text-lg font-medium">
-                {t("organizations.information")}
-              </h3>
+              <h3 className="text-lg font-medium">{t("common.information")}</h3>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  {t("organizations.name")}
-                </h4>
-                <p>{organization.name}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  {t("organizations.slug")}
-                </h4>
-                <p>{organization.slug}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  {t("organizations.id")}
-                </h4>
-                <p className="text-sm font-mono">{organization.id}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  {t("organizations.createdAt")}
-                </h4>
-                <p>{new Date(organization.created_at).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  {t("users.role")}
-                </h4>
-                <p>{t(`organizations.roles.${userRole}`)}</p>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>{t("common.name")}</Label>
+                  <div className="mt-1 text-sm">{organization.name}</div>
+                </div>
+                <div>
+                  <Label>{t("common.slug")}</Label>
+                  <div className="mt-1 text-sm">{organization.slug}</div>
+                </div>
+                <div>
+                  <Label>{t("common.created")}</Label>
+                  <div className="mt-1 text-sm">
+                    {new Date(organization.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <Label>{t("common.role")}</Label>
+                  <div className="mt-1 text-sm capitalize">{userRole}</div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="users">
+          <Card>
+            <CardContent className="pt-6">
+              <OrganizationUsers
+                organizationId={organization.id}
+                isAdmin={isAdmin}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="shops">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="text-lg font-medium">{t("shops.title")}</h3>
-              <Button size="sm" onClick={() => setCreateShopDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("shops.create")}
-              </Button>
+              {isAdmin && (
+                <Button size="sm" onClick={() => setCreateShopDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("shops.create")}
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {shops.length > 0 ? (
-                  <div className="grid gap-4">
-                    {shops.map((shop) => (
-                      <div
-                        key={shop.id}
-                        className="flex justify-between items-center p-4 border rounded-md hover:bg-accent/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Store className="h-5 w-5 text-primary" />
-                          <div>
-                            <p className="font-medium">{shop.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              ID: {shop.id.substring(0, 8)}...
-                            </p>
+              {shops && shops.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {shops.map((shop) => (
+                    <Card key={shop.id} className="overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center">
+                            <Store className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <span className="font-medium">{shop.name}</span>
                           </div>
+                          {isAdmin && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">
+                                    {t("common.actions")}
+                                  </span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    router.push(`/shops/${shop.id}`)
+                                  }
+                                >
+                                  <ArrowRight className="mr-2 h-4 w-4" />
+                                  {t("common.view")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleRemoveShop(shop.id)}
+                                >
+                                  <Link className="mr-2 h-4 w-4" />
+                                  {t("shops.removeFromOrg")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleDeleteShop(shop.id)}
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  {t("common.delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              router.push(`/shops/${shop.id}`);
-                            }}
-                          >
-                            <ArrowRight className="h-4 w-4 mr-2" />
-                            {t("common.view")}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-amber-600 hover:text-amber-600"
-                            onClick={() => handleRemoveShop(shop.id)}
-                          >
-                            <Link className="h-4 w-4 mr-2" />
-                            {t("common.remove")}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteShop(shop.id)}
-                          >
-                            <Trash className="h-4 w-4 mr-2" />
-                            {t("common.delete")}
-                          </Button>
+                        <div className="text-sm text-muted-foreground">
+                          {shop.location || t("shops.noLocation")}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">{t("shops.empty")}</p>
-                )}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  {t("shops.noShops")}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

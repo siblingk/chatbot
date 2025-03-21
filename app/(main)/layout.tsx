@@ -57,7 +57,7 @@ export default async function MainLayout({
                       <AppSidebar />
                       <div className="flex flex-col min-h-screen w-full">
                         <NavBar />
-                        <main className="flex-1 mx-auto container">
+                        <main className="flex-1 mx-auto container px-6">
                           {children}
                         </main>
                       </div>

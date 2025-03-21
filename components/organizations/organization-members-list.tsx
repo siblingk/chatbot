@@ -15,7 +15,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -36,15 +35,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, MoreHorizontal, UserPlus } from "lucide-react";
+import { Loader2, MoreHorizontal, UserPlus, Eye, Mail } from "lucide-react";
 import { OrganizationRole } from "@/types/organization";
+import { InviteUserForm } from "@/components/users/invite-user-form";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Importar las funciones necesarias
 import {
-  addUserToOrganization,
   updateUserRole,
   removeUserFromOrganization,
 } from "@/app/actions/organizations";
@@ -57,6 +60,7 @@ interface OrganizationMembersListProps {
     users?: {
       id: string;
       email: string;
+      last_sign_in_at?: string | null;
       user_metadata?: {
         avatar_url?: string;
       };
@@ -75,41 +79,11 @@ export function OrganizationMembersList({
   const router = useRouter();
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<OrganizationRole>("member");
-  const [isInviting, setIsInviting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [selectedMember, setSelectedMember] = useState<
     OrganizationMembersListProps["members"][0] | null
   >(null);
-
-  const handleInvite = async () => {
-    if (!email.trim()) {
-      toast.error(t("common.required"));
-      return;
-    }
-
-    try {
-      setIsInviting(true);
-      const result = await addUserToOrganization(organizationId, email, role);
-
-      if (result.success) {
-        toast.success(t("organizations.inviteSuccess"));
-        setInviteDialogOpen(false);
-        setEmail("");
-        setRole("member");
-        router.refresh();
-      } else {
-        toast.error(result.error || t("common.error"));
-      }
-    } catch (error) {
-      console.error("Error al invitar usuario:", error);
-      toast.error(t("common.error"));
-    } finally {
-      setIsInviting(false);
-    }
-  };
 
   const handleUpdateRole = async (
     userId: string,
@@ -131,37 +105,6 @@ export function OrganizationMembersList({
     } finally {
       setIsUpdating(false);
     }
-  };
-
-  const handleRemoveMember = async () => {
-    if (!selectedMember) return;
-
-    try {
-      setIsRemoving(true);
-      const result = await removeUserFromOrganization(
-        organizationId,
-        selectedMember.user_id
-      );
-
-      if (result.success) {
-        toast.success(t("organizations.removeMemberSuccess"));
-        setRemoveDialogOpen(false);
-        router.refresh();
-      } else {
-        toast.error(result.error || t("common.error"));
-      }
-    } catch (error) {
-      console.error("Error al eliminar miembro:", error);
-      toast.error(t("common.error"));
-    } finally {
-      setIsRemoving(false);
-    }
-  };
-
-  // Función para obtener las iniciales del email
-  const getUserInitials = (email: string) => {
-    if (!email) return "U";
-    return email.charAt(0).toUpperCase();
   };
 
   return (
@@ -195,53 +138,80 @@ export function OrganizationMembersList({
             {members.map((member) => (
               <div
                 key={member.id}
-                className="grid grid-cols-12 gap-4 p-4 items-center"
+                className="grid grid-cols-12 gap-4 p-4 border-b last:border-0 items-center"
               >
-                <div className="col-span-5 flex items-center gap-2">
+                <div className="col-span-5 flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
                       src={member.users?.user_metadata?.avatar_url}
-                      alt={member.users?.email}
+                      alt={member.users?.email || ""}
                     />
                     <AvatarFallback>
-                      {getUserInitials(member.users?.email || "")}
+                      {member.users?.email?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate">{member.users?.email}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate">{member.users?.email}</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            {member.role ? (
+                              <Eye className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Mail className="h-4 w-4 text-amber-500 animate-pulse" />
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {member.role
+                            ? t("organizations.inviteAccepted")
+                            : t("organizations.invitePending")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
                 <div className="col-span-3">
                   {isAdmin ? (
                     <Select
-                      value={member.role}
+                      defaultValue={member.role}
+                      disabled={isUpdating}
                       onValueChange={(value) =>
                         handleUpdateRole(
                           member.user_id,
                           value as OrganizationRole
                         )
                       }
-                      disabled={isUpdating}
                     >
                       <SelectTrigger className="h-8">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="super_admin">
+                          {t("roles.superAdmin")}
+                        </SelectItem>
                         <SelectItem value="admin">
-                          {t("organizations.roles.admin")}
+                          {t("roles.admin")}
                         </SelectItem>
-                        <SelectItem value="collaborator">
-                          {t("organizations.roles.collaborator")}
+                        <SelectItem value="colaborador">
+                          {t("roles.colaborador")}
                         </SelectItem>
-                        <SelectItem value="member">
-                          {t("organizations.roles.member")}
-                        </SelectItem>
+                        <SelectItem value="user">{t("roles.user")}</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
-                    <span>{t(`organizations.roles.${member.role}`)}</span>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                        member.role
+                      )}`}
+                    >
+                      {getRoleTranslation(member.role, t)}
+                    </span>
                   )}
                 </div>
                 <div className="col-span-3">
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
                     {t("users.active")}
                   </span>
                 </div>
@@ -251,16 +221,18 @@ export function OrganizationMembersList({
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">{t("common.actions")}</span>
+                          <span className="sr-only">
+                            {t("organizations.actions")}
+                          </span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
                           onClick={() => {
                             setSelectedMember(member);
                             setRemoveDialogOpen(true);
                           }}
+                          className="text-destructive"
                         >
                           {t("organizations.removeMember")}
                         </DropdownMenuItem>
@@ -275,53 +247,16 @@ export function OrganizationMembersList({
       </div>
 
       <Sheet open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <SheetContent>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t("organizations.inviteMember")}</SheetTitle>
             <SheetDescription>
               {t("organizations.inviteDescription")}
             </SheetDescription>
           </SheetHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">{t("users.email")}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("auth.emailPlaceholder")}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="role">{t("users.role")}</Label>
-              <Select
-                value={role}
-                onValueChange={(value) => setRole(value as OrganizationRole)}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">
-                    {t("organizations.roles.admin")}
-                  </SelectItem>
-                  <SelectItem value="collaborator">
-                    {t("organizations.roles.collaborator")}
-                  </SelectItem>
-                  <SelectItem value="member">
-                    {t("organizations.roles.member")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="py-6">
+            <InviteUserForm organizationId={organizationId} />
           </div>
-          <SheetFooter className="pt-4">
-            <Button type="submit" onClick={handleInvite} disabled={isInviting}>
-              {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t("organizations.invite")}
-            </Button>
-          </SheetFooter>
         </SheetContent>
       </Sheet>
 
@@ -329,22 +264,40 @@ export function OrganizationMembersList({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("organizations.removeMemberConfirmTitle")}
+              {t("organizations.confirmRemove")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("organizations.removeMemberConfirmDescription", {
-                email: selectedMember?.users?.email,
-              })}
+              {t("organizations.removeDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleRemoveMember}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (selectedMember) {
+                  try {
+                    setIsRemoving(true);
+                    await removeUserFromOrganization(
+                      organizationId,
+                      selectedMember.user_id
+                    );
+                    toast.success(t("organizations.memberRemoved"));
+                    router.refresh();
+                  } catch (error) {
+                    console.error("Error al eliminar miembro:", error);
+                    toast.error(t("common.error"));
+                  } finally {
+                    setIsRemoving(false);
+                    setSelectedMember(null);
+                  }
+                }
+              }}
               disabled={isRemoving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isRemoving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isRemoving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               {t("organizations.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -352,4 +305,39 @@ export function OrganizationMembersList({
       </AlertDialog>
     </div>
   );
+}
+
+// Función para obtener el color del badge según el rol
+function getRoleBadgeColor(role: OrganizationRole): string {
+  switch (role) {
+    case "super_admin":
+      return "bg-purple-100 text-purple-800";
+    case "admin":
+      return "bg-blue-100 text-blue-800";
+    case "colaborador":
+      return "bg-green-100 text-green-800";
+    case "user":
+      return "bg-gray-100 text-gray-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
+
+// Función para obtener la traducción del rol
+function getRoleTranslation(
+  role: OrganizationRole,
+  t: (key: string) => string
+): string {
+  switch (role) {
+    case "super_admin":
+      return t("roles.superAdmin");
+    case "admin":
+      return t("roles.admin");
+    case "colaborador":
+      return t("roles.colaborador");
+    case "user":
+      return t("roles.user");
+    default:
+      return role;
+  }
 }

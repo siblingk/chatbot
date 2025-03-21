@@ -1,5 +1,5 @@
 export type LeadAssignmentMode = "automatic" | "manual";
-export type PriceSource = "ai" | "dcitelly_api";
+export type PriceSource = "ai" | "dcitelly_api" | "manual";
 export type ShopStatus = "active" | "inactive";
 
 export interface Setting {

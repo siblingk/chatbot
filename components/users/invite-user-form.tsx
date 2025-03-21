@@ -17,11 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  User,
-  updateUserAction,
-  inviteUserByEmailAction,
-} from "@/app/actions/users";
+import { inviteUserByEmailAction } from "@/app/actions/users";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -32,11 +28,11 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppRole } from "@/types/auth";
 
-interface UserFormProps {
-  user?: User | null;
+interface InviteUserFormProps {
+  organizationId?: string;
 }
 
-export function UserForm({ user }: UserFormProps) {
+export function InviteUserForm({ organizationId }: InviteUserFormProps) {
   const t = useTranslations("users");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -54,8 +50,8 @@ export function UserForm({ user }: UserFormProps) {
   });
 
   const defaultValues = {
-    email: user?.email || "",
-    role: (user?.role === "admin" ? "admin" : "user") as AppRole,
+    email: "",
+    role: "user" as AppRole,
   };
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -64,39 +60,28 @@ export function UserForm({ user }: UserFormProps) {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    // Prevent multiple submissions
     if (isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
-      let result;
-
-      if (user) {
-        // Actualizar usuario existente
-        console.log("Actualizando usuario:", user.id);
-        result = await updateUserAction({
-          id: user.id,
-          role: values.role as AppRole,
-        });
-      } else {
-        // Invitar nuevo usuario usando la nueva función
-        console.log("Invitando nuevo usuario");
-        result = await inviteUserByEmailAction({
-          email: values.email,
-          role: values.role as AppRole,
-        });
-      }
+      // Invitar usuario usando la función de invitación por email
+      console.log("Invitando nuevo usuario");
+      const result = await inviteUserByEmailAction({
+        email: values.email,
+        role: values.role as AppRole,
+        organizationId: organizationId || null,
+      });
 
       if (result.success) {
-        toast.success(user ? t("userUpdated") : t("userInvited"));
+        toast.success(t("userInvited"));
         form.reset();
         router.refresh();
       } else if (result.message) {
         toast.error(result.message);
       }
     } catch (error) {
-      console.error("Error en UserForm:", error);
+      console.error("Error al invitar usuario:", error);
       toast.error(t("error"));
     } finally {
       setIsSubmitting(false);
@@ -167,7 +152,7 @@ export function UserForm({ user }: UserFormProps) {
           </SheetClose>
           <SheetClose asChild>
             <Button type="submit" disabled={isDisabled}>
-              {user ? t("update") : t("invite")}
+              {t("invite")}
             </Button>
           </SheetClose>
         </div>

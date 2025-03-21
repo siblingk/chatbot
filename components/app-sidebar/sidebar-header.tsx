@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuAction,
 } from "@/components/ui/sidebar";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useChat } from "@/contexts/chat-context";
 import { useUserRole } from "@/hooks/useUserRole";
 import { OrganizationSelector } from "./organization-selector";
@@ -17,12 +17,9 @@ import { OrganizationSelector } from "./organization-selector";
 export function SidebarHeader() {
   const t = useTranslations();
   const router = useRouter();
-  const pathname = usePathname();
-  const { clearChat } = useChat();
-  const { isAdmin } = useUserRole();
 
-  // Verificar si estamos en modo shop (dentro de una organización)
-  const isShopMode = pathname.includes("/organizations/");
+  const { clearChat } = useChat();
+  const { isAdmin, isSuperAdmin } = useUserRole();
 
   // Función para ir a la página principal con chat limpio
   const handleGoHome = async () => {
@@ -30,37 +27,13 @@ export function SidebarHeader() {
     router.push("/");
   };
 
-  // Si estamos en modo shop, solo mostramos el selector de organización para admins
-  if (isShopMode) {
-    return (
-      <Header>
-        <SidebarMenu>
-          {isAdmin ? (
-            <SidebarMenuItem>
-              <OrganizationSelector />
-            </SidebarMenuItem>
-          ) : (
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => router.push("/")}>
-                <Box />
-                <span>{t("app.title")}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-        </SidebarMenu>
-      </Header>
-    );
-  }
-
   // En modo normal, mostramos el selector de organización para admins y el botón de nuevo chat
   return (
     <Header>
       <SidebarMenu>
-        {isAdmin ? (
+        {isAdmin || isSuperAdmin ? (
           <>
-            <SidebarMenuItem>
-              <OrganizationSelector />
-            </SidebarMenuItem>
+            <OrganizationSelector />
           </>
         ) : (
           <SidebarMenuItem>

@@ -10,19 +10,14 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Settings } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { ShopSidebar } from "./shop-sidebar";
-import Link from "next/link";
 
 export async function AppSidebar() {
   const t = await getTranslations();
@@ -30,18 +25,6 @@ export async function AppSidebar() {
   const supabase = await createClient(cookieStore);
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id ?? "";
-
-  // Obtener el rol del usuario
-  const { data: userRole } = await supabase
-    .from("users")
-    .select("role, is_super_admin")
-    .eq("id", userId)
-    .single();
-
-  const isAdmin =
-    userRole?.is_super_admin ||
-    userRole?.role === "admin" ||
-    userRole?.role === "super_admin";
 
   // Obtener el historial de chats
   const history = await getChatHistory(userId);
@@ -53,7 +36,8 @@ export async function AppSidebar() {
       if (!groups[sessionId]) {
         groups[sessionId] = [];
       }
-      groups[sessionId].push(message);
+      // Insertar al inicio del array en lugar de al final
+      groups[sessionId].unshift(message);
       return groups;
     }, {}) || {};
 
@@ -62,24 +46,6 @@ export async function AppSidebar() {
       <SidebarHeader />
 
       <SidebarContent className="-mt-2">
-        <ShopSidebar />
-
-        {isAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel>{t("sidebar.administration")}</SidebarGroupLabel>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <Link href="/settings" legacyBehavior passHref>
-                  <SidebarMenuButton tooltip={t("sidebar.settings")}>
-                    <Settings className="h-4 w-4" />
-                    <span>{t("sidebar.settings")}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
-
         <Collapsible defaultOpen className="group/collapsible">
           <SidebarGroup>
             <SidebarGroupLabel asChild>

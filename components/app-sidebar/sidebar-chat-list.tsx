@@ -88,7 +88,7 @@ export function SidebarChatList({
           return (
             <SidebarMenuItem key={sessionId} className="group relative">
               {editingSessionId === sessionId ? (
-                <div className="flex items-center w-full gap-2 px-2">
+                <div className="flex items-center w-full gap-2">
                   <Input
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
@@ -125,7 +125,7 @@ export function SidebarChatList({
                   </SidebarMenuButton>
 
                   {!isCollapsed && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

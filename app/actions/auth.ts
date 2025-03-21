@@ -30,13 +30,8 @@ export async function getUserRole(): Promise<{ role: AppRole | null }> {
     return { role: null };
   }
 
-  // Verificar que el rol sea válido
-  if (user.role === "admin" || user.role === "user" || user.role === "shop") {
-    return { role: user.role };
-  }
-
   // Por defecto, el usuario es un usuario normal
-  return { role: "user" };
+  return { role: user.role };
 }
 
 /**

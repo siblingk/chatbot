@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, ChevronUp, LogIn, Bot } from "lucide-react";
+import { Settings, ChevronUp, LogIn, Bot, Building } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
@@ -33,7 +33,7 @@ interface SidebarFooterProps {
 
 export function SidebarFooter({ user }: SidebarFooterProps) {
   const { openSettingsModal } = useSettingsModal();
-  const { isAdmin } = useUserRole();
+  const { isSuperAdmin } = useUserRole();
   const t = useTranslations();
   const isMobile = useIsMobile();
   // Obtener las iniciales del email del usuario para el avatar fallback
@@ -63,11 +63,15 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                 align="end"
                 sideOffset={4}
               >
-                <DropdownMenuItem onClick={openSettingsModal}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  {t("sidebar.settings")}
-                </DropdownMenuItem>
-                {isAdmin && (
+                {isSuperAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href={`/organizations`}>
+                      <Building className="mr-2 h-4 w-4" />
+                      {t("organizations.title")}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {isSuperAdmin && (
                   <DropdownMenuItem asChild>
                     <Link href={`/agents`}>
                       <Bot className="mr-2 h-4 w-4" />
@@ -75,6 +79,12 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                     </Link>
                   </DropdownMenuItem>
                 )}
+
+                <DropdownMenuItem onClick={openSettingsModal}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  {t("sidebar.settings")}
+                </DropdownMenuItem>
+
                 <DropdownMenuItem asChild>
                   <SignOutButton />
                 </DropdownMenuItem>

@@ -41,6 +41,7 @@ export function ShopSidebar() {
         className="flex cursor-pointer items-center justify-between"
         onClick={() => setIsExpanded(!isExpanded)}
       >
+        stify{" "}
         <div className="flex items-center gap-2">
           <Store className="h-4 w-4" />
           <span>{t("shops")}</span>

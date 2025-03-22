@@ -44,10 +44,11 @@ const formSchema = (t: any) =>
   });
 
 interface ShopFormProps {
-  shop: Shop | null;
+  shop?: Shop | null;
+  organizationId?: string;
 }
 
-export function ShopForm({ shop }: ShopFormProps) {
+export function ShopForm({ shop, organizationId }: ShopFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const t = useTranslations("shops");
   const router = useRouter();
@@ -80,6 +81,11 @@ export function ShopForm({ shop }: ShopFormProps) {
         // @ts-expect-error asdasd
         formData.append(key, value.toString());
       });
+
+      // Si hay un organizationId, añadirlo al formData
+      if (organizationId) {
+        formData.append("organizationId", organizationId);
+      }
 
       const result = shop
         ? await updateShopAction(shop.id, {}, formData)

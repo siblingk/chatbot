@@ -1,27 +1,27 @@
-export type SocialMediaPlatform =
+type SocialMediaPlatform =
   | "facebook"
   | "instagram"
   | "tiktok"
   | "linkedin";
 
-export interface MetaAdsConfig {
+interface MetaAdsConfig {
   enabled: boolean;
   accountConnected: boolean;
 }
 
-export interface GoogleAdsConfig {
+interface GoogleAdsConfig {
   enabled: boolean;
   accountConnected: boolean;
 }
 
-export interface SocialMediaAutoPostingConfig {
+interface SocialMediaAutoPostingConfig {
   enabled: boolean;
   platforms: {
     [key in SocialMediaPlatform]: boolean;
   };
 }
 
-export interface DcitellyConfig {
+interface DcitellyConfig {
   enabled: boolean;
   accountConnected: boolean;
   autoSync: {

@@ -1,6 +1,6 @@
-export type LeadAssignmentMode = "automatic" | "manual";
-export type PriceSource = "ai" | "dcitelly_api" | "manual";
-export type ShopStatus = "active" | "inactive";
+type LeadAssignmentMode = "automatic" | "manual";
+type PriceSource = "ai" | "dcitelly_api" | "manual";
+type ShopStatus = "active" | "inactive";
 
 export interface Setting {
   id: string;

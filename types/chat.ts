@@ -10,7 +10,7 @@ export interface Message {
   title?: string;
 }
 
-export interface ChatResponse {
+interface ChatResponse {
   output: string;
   response?: string;
 }
@@ -34,7 +34,7 @@ export type ChatStatus =
   | "quote"
   | "invoice";
 
-export interface ChatLead {
+interface ChatLead {
   id: string;
   session_id: string;
   user_id: string;

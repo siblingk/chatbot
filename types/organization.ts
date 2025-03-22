@@ -1,6 +1,6 @@
-export type OrganizationRole = "super_admin" | "admin" | "colaborador" | "user";
+type OrganizationRole = "super_admin" | "admin" | "colaborador" | "user";
 
-export interface Organization {
+interface Organization {
   id: string;
   name: string;
   slug: string;

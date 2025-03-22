@@ -1,6 +1,6 @@
 export type AppRole = "super_admin" | "admin" | "colaborador" | "user" | "shop";
 
-export type AppPermission =
+type AppPermission =
   | "tasks.create"
   | "tasks.update"
   | "tasks.delete"

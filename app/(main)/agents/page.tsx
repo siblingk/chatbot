@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -7,7 +6,7 @@ import { getAgents, deleteAgent, updateAgent } from "@/app/actions/agents";
 import { Agent } from "@/types/agents";
 import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
-import { redirect } from "next/navigation";
+
 import {
   Bot,
   RefreshCw,
@@ -18,7 +17,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -46,33 +44,19 @@ import {
 
 export default function AgentsPage() {
   const router = useRouter();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, isSuperAdmin } = useUserRole();
   const t = useTranslations("settings");
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState<string | null>(null);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Verificar si el usuario es administrador
-    if (!roleLoading && !isAdmin) {
-      redirect("/");
-    }
-
     const fetchAgents = async () => {
-      setLoading(true);
       try {
-        console.log("Listado - Usuario es admin:", isAdmin);
-        console.log("Listado - Obteniendo agentes...");
-
         // Para administradores: onlyActive=false, filterByRole=false
         const agentsData = await getAgents(false, false);
-
-        console.log(
-          "Listado - Número de agentes encontrados:",
-          agentsData?.length || 0
-        );
 
         setAgents(agentsData);
         setError(null);
@@ -80,15 +64,11 @@ export default function AgentsPage() {
         console.error("Error fetching agents:", err);
         setError(t("errorLoading"));
         toast.error(t("errorLoading"));
-      } finally {
-        setLoading(false);
       }
     };
 
-    if (!roleLoading && isAdmin) {
-      fetchAgents();
-    }
-  }, [isAdmin, roleLoading, t]);
+    fetchAgents();
+  }, [isAdmin, isSuperAdmin, t]);
 
   const handleDeleteAgent = async () => {
     try {
@@ -131,40 +111,6 @@ export default function AgentsPage() {
     }
   };
 
-  if (roleLoading || loading) {
-    return (
-      <div className="container mx-auto py-12 px-4">
-        <div className="flex items-center gap-2 mb-8">
-          <Bot className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold">{t("agents")}</h1>
-        </div>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-10 w-32" />
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <div className="flex gap-2">
-                  <Skeleton className="h-9 w-9 rounded-md" />
-                  <Skeleton className="h-9 w-9 rounded-md" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="container mx-auto py-12 px-4">
@@ -188,7 +134,7 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="container mx-auto py-12 px-4">
+    <div className="container mx-auto px-4">
       <div className="flex flex-row md:flex-row md:items-center gap-4 mb-8">
         <Bot className="h-6 w-6 text-primary" />
         <h1 className="text-3xl font-bold">{t("agents")}</h1>

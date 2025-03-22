@@ -64,10 +64,16 @@ export async function createShopAction(
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 
+  // Obtener el organizationId si existe
+  const organizationId = formData.get("organizationId") as string | null;
+
   try {
-    const { error } = await supabase
+    // Insertar la tienda
+    const { data, error } = await supabase
       .from("shops")
-      .insert([validatedFields.data]);
+      .insert([validatedFields.data])
+      .select("id")
+      .single();
 
     if (error) {
       return {
@@ -75,7 +81,30 @@ export async function createShopAction(
       };
     }
 
+    // Si hay organizationId y se creó la tienda correctamente, asignarla a la organización
+    if (organizationId && data?.id) {
+      const { error: assignError } = await supabase
+        .from("organization_shops")
+        .insert([
+          {
+            organization_id: organizationId,
+            shop_id: data.id,
+          },
+        ]);
+
+      if (assignError) {
+        return {
+          message: `La tienda se creó pero no se pudo asignar a la organización: ${assignError.message}`,
+        };
+      }
+    }
+
+    // Revalidar tanto la página de configuración como la de organizaciones
     revalidatePath("/settings");
+    if (organizationId) {
+      revalidatePath(`/organizations/${organizationId}`);
+    }
+
     return { message: "Tienda creada con éxito" };
   } catch (error) {
     return {
@@ -137,97 +166,6 @@ export async function updateShopAction(
 
     revalidatePath("/settings");
     return { message: "Tienda actualizada con éxito" };
-  } catch (error) {
-    return {
-      message: `Error inesperado: ${
-        error instanceof Error ? error.message : "Error desconocido"
-      }`,
-    };
-  }
-}
-
-// Eliminar una tienda
-export async function deleteShopAction(id: string): Promise<ShopActionState> {
-  // Validar que el ID no sea nulo o vacío
-  if (!id) {
-    console.error("ID nulo o vacío para eliminar:", id);
-    return {
-      message: "ID inválido para eliminar",
-    };
-  }
-
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  try {
-    const { error } = await supabase.from("shops").delete().eq("id", id);
-
-    if (error) {
-      return {
-        message: `Error al eliminar la tienda: ${error.message}`,
-      };
-    }
-
-    revalidatePath("/settings");
-    return { message: "Tienda eliminada con éxito" };
-  } catch (error) {
-    return {
-      message: `Error inesperado: ${
-        error instanceof Error ? error.message : "Error desconocido"
-      }`,
-    };
-  }
-}
-
-// Activar una tienda
-export async function activateShopAction(id: string): Promise<ShopActionState> {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  try {
-    const { error } = await supabase
-      .from("shops")
-      .update({ status: "active" })
-      .eq("id", id);
-
-    if (error) {
-      return {
-        message: `Error al activar la tienda: ${error.message}`,
-      };
-    }
-
-    revalidatePath("/settings");
-    return { message: "Tienda activada con éxito" };
-  } catch (error) {
-    return {
-      message: `Error inesperado: ${
-        error instanceof Error ? error.message : "Error desconocido"
-      }`,
-    };
-  }
-}
-
-// Desactivar una tienda
-export async function deactivateShopAction(
-  id: string
-): Promise<ShopActionState> {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  try {
-    const { error } = await supabase
-      .from("shops")
-      .update({ status: "inactive" })
-      .eq("id", id);
-
-    if (error) {
-      return {
-        message: `Error al desactivar la tienda: ${error.message}`,
-      };
-    }
-
-    revalidatePath("/settings");
-    return { message: "Tienda desactivada con éxito" };
   } catch (error) {
     return {
       message: `Error inesperado: ${

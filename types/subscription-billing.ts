@@ -1,10 +1,10 @@
-export interface PaymentMethod {
+interface PaymentMethod {
   type: "visa" | "mastercard" | "amex" | "discover";
   lastFourDigits: string;
   expiryDate: string;
 }
 
-export interface Plan {
+interface Plan {
   name: string;
   price: number;
   billingCycle: "monthly" | "yearly";

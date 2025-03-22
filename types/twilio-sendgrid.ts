@@ -1,16 +1,16 @@
-export interface TwilioConfig {
+interface TwilioConfig {
   enabled: boolean;
   apiKey: string;
   smsEnabled: boolean;
   whatsappEnabled: boolean;
 }
 
-export interface SendGridConfig {
+interface SendGridConfig {
   enabled: boolean;
   apiKey: string;
 }
 
-export interface LeadNotificationPreferences {
+interface LeadNotificationPreferences {
   sms: boolean;
   email: boolean;
   both: boolean;

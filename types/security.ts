@@ -1,10 +1,10 @@
-export interface LoginSession {
+interface LoginSession {
   device: string;
   location: string;
   lastActive: string;
 }
 
-export interface UserRole {
+interface UserRole {
   userId: string;
   userName: string;
   role: "admin" | "manager" | "user";

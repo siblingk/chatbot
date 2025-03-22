@@ -2,7 +2,6 @@
 import { Setting } from "@/types/settings";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { UsersTable } from "../users/users-table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Settings,
@@ -10,12 +9,10 @@ import {
   Moon,
   Sun,
   Bell,
-  Store,
   Link,
   MessageSquare,
   Shield,
   Receipt,
-  Building,
 } from "lucide-react";
 import { User } from "@/app/actions/users";
 import { useSettingsModal } from "@/contexts/settings-modal-context";
@@ -29,11 +26,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shop } from "@/types/shops";
-import { ShopsTable } from "../shops/shops-table";
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createShopColumns } from "../shops/shop-columns";
 import { ConnectedAppsTab } from "./connected-apps-tab";
 import { ConnectedAppsConfig } from "@/types/connected-apps";
 import { TwilioSendGridTab } from "./twilio-sendgrid-tab";
@@ -42,14 +34,9 @@ import { SecurityTab } from "./security-tab";
 import { SecurityConfig } from "@/types/security";
 import { SubscriptionBillingTab } from "./subscription-billing-tab";
 import { SubscriptionBillingConfig } from "@/types/subscription-billing";
-import { OrganizationsTab } from "./organizations-tab";
-import { OrganizationWithRole } from "@/types/organization";
 
 interface SettingsModalProps {
   settings: Setting[];
-  users: User[];
-  shops: Shop[];
-  organizations?: OrganizationWithRole[];
   settingsColumns: ColumnDef<Setting>[];
   userColumns?: ColumnDef<User>[];
   connectedAppsConfig?: ConnectedAppsConfig;
@@ -76,10 +63,6 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({
-  users,
-  shops,
-  organizations = [],
-  userColumns = [],
   connectedAppsConfig,
   onUpdateConnectedApps,
   twilioSendGridConfig,
@@ -99,7 +82,6 @@ export function SettingsModal({
   const { isOpen, closeSettingsModal, activeTab, setActiveTab } =
     useSettingsModal();
   const t = useTranslations("settings");
-  const torg = useTranslations("organizations");
   const tLanguage = useTranslations("language");
   const tTheme = useTranslations("theme");
   const tNotifications = useTranslations("notifications");
@@ -107,7 +89,7 @@ export function SettingsModal({
   const { theme, setTheme } = useTheme();
   const { locale, setLocale } = useLanguage();
   const [isPending, startTransition] = useTransition();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isSuperAdmin } = useUserRole();
 
   // Función para cambiar el idioma
   const handleLocaleChange = (newLocale: string) => {
@@ -153,18 +135,8 @@ export function SettingsModal({
   const navItems = useMemo(() => {
     const options = [{ value: "general", label: t("general"), icon: Settings }];
 
-    if (isAdmin) {
+    if (isAdmin || isSuperAdmin) {
       options.push(
-        {
-          value: "organizations",
-          label: torg("title"),
-          icon: Building,
-        },
-        {
-          value: "shop_members",
-          label: t("shopMembers"),
-          icon: Store,
-        },
         {
           value: "notifications",
           label: t("notifications"),
@@ -191,17 +163,18 @@ export function SettingsModal({
     }
 
     return options;
-  }, [isAdmin, t, torg]);
+  }, [isAdmin, isSuperAdmin, t]);
 
   // Asegurarse de que el tab activo sea válido para el rol del usuario
   useEffect(() => {
     if (
       !isAdmin &&
+      !isSuperAdmin &&
       (activeTab === "workshops" || activeTab === "shop_members")
     ) {
       setActiveTab("general");
     }
-  }, [isAdmin, activeTab, setActiveTab]);
+  }, [isAdmin, isSuperAdmin, activeTab, setActiveTab]);
 
   // Si el modal no está abierto, no renderizamos nada
   if (!isOpen) return null;
@@ -249,63 +222,31 @@ export function SettingsModal({
                 </div>
               ) : (
                 <>
-                  {activeTab === "organizations" && isAdmin && (
-                    <OrganizationsTab
-                      organizations={organizations}
-                      shops={shops}
-                    />
-                  )}
-                  {activeTab === "shop_members" && isAdmin && (
-                    <div>
-                      <h2 className="text-2xl font-bold mb-6">
-                        {t("shopMembers")}
-                      </h2>
-                      <Tabs defaultValue="shops" className="w-full">
-                        <TabsList className="mb-4">
-                          <TabsTrigger value="shops">
-                            {t("workshops")}
-                          </TabsTrigger>
-                          <TabsTrigger value="users">{t("users")}</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="shops">
-                          <ShopsTable
-                            shops={shops}
-                            columns={createShopColumns(t)}
-                          />
-                        </TabsContent>
-                        <TabsContent value="users">
-                          <UsersTable
-                            users={users}
-                            columns={userColumns}
-                            onUpdateUserRole={onUpdateUserRole}
-                          />
-                        </TabsContent>
-                      </Tabs>
-                    </div>
-                  )}
-                  {activeTab === "connected_apps" && isAdmin && (
-                    <div>
-                      <h2 className="text-2xl font-bold mb-6">
-                        {t("connectedApps")}
-                      </h2>
-                      <ConnectedAppsTab
-                        config={connectedAppsConfig}
-                        onUpdate={onUpdateConnectedApps}
-                      />
-                    </div>
-                  )}
-                  {activeTab === "twilio_sendgrid" && isAdmin && (
-                    <div>
-                      <h2 className="text-2xl font-bold mb-6">
-                        {t("twilioSendgrid")}
-                      </h2>
-                      <TwilioSendGridTab
-                        config={twilioSendGridConfig}
-                        onUpdate={onUpdateTwilioSendGrid}
-                      />
-                    </div>
-                  )}
-                  {activeTab === "security" && isAdmin && (
+                  {activeTab === "connected_apps" &&
+                    (isAdmin || isSuperAdmin) && (
+                      <div>
+                        <h2 className="text-2xl font-bold mb-6">
+                          {t("connectedApps")}
+                        </h2>
+                        <ConnectedAppsTab
+                          config={connectedAppsConfig}
+                          onUpdate={onUpdateConnectedApps}
+                        />
+                      </div>
+                    )}
+                  {activeTab === "twilio_sendgrid" &&
+                    (isAdmin || isSuperAdmin) && (
+                      <div>
+                        <h2 className="text-2xl font-bold mb-6">
+                          {t("twilioSendgrid")}
+                        </h2>
+                        <TwilioSendGridTab
+                          config={twilioSendGridConfig}
+                          onUpdate={onUpdateTwilioSendGrid}
+                        />
+                      </div>
+                    )}
+                  {activeTab === "security" && (isAdmin || isSuperAdmin) && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">
                         {t("security")}
@@ -319,20 +260,21 @@ export function SettingsModal({
                       />
                     </div>
                   )}
-                  {activeTab === "subscription_billing" && isAdmin && (
-                    <div>
-                      <h2 className="text-2xl font-bold mb-6">
-                        {t("subscriptionBilling")}
-                      </h2>
-                      <SubscriptionBillingTab
-                        config={subscriptionBillingConfig}
-                        onUpdate={onUpdateSubscriptionBilling}
-                        onChangePlan={onChangePlan}
-                        onUpdatePaymentInfo={onUpdatePaymentInfo}
-                        locale={locale}
-                      />
-                    </div>
-                  )}
+                  {activeTab === "subscription_billing" &&
+                    (isAdmin || isSuperAdmin) && (
+                      <div>
+                        <h2 className="text-2xl font-bold mb-6">
+                          {t("subscriptionBilling")}
+                        </h2>
+                        <SubscriptionBillingTab
+                          config={subscriptionBillingConfig}
+                          onUpdate={onUpdateSubscriptionBilling}
+                          onChangePlan={onChangePlan}
+                          onUpdatePaymentInfo={onUpdatePaymentInfo}
+                          locale={locale}
+                        />
+                      </div>
+                    )}
                   {activeTab === "general" && (
                     <div>
                       <h2 className="text-2xl font-bold mb-6">

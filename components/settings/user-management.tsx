@@ -41,7 +41,6 @@ import {
 import {
   PlusCircle,
   Pencil,
-  Trash,
   Building,
   Store,
   User,
@@ -61,7 +60,6 @@ import {
   addUserToOrganization,
   getUserOrganizations,
   getOrganizationShops,
-  manageUserShopAccess,
 } from "@/app/actions/organizations";
 
 interface UserManagementProps {
@@ -437,14 +435,7 @@ export function UserManagement({ initialUsers = [] }: UserManagementProps) {
                           </TableCell>
                           <TableCell>{org.email || "-"}</TableCell>
                           <TableCell>{org.address || "-"}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="bg-gray-100 text-gray-800"
-                            >
-                              {org.shops?.length || 0}
-                            </Badge>
-                          </TableCell>
+
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"

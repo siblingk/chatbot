@@ -4,7 +4,7 @@ export type PersonalityTone =
   | "Sales-Driven"
   | "Sales-Focused";
 export type LeadStrategy = "Strict-Filtering" | "Smart-Targeting";
-export type PreQuoteType =
+type PreQuoteType =
   | "Standard"
   | "With Warranty"
   | "Detailed Explanation"
@@ -35,6 +35,6 @@ export interface Agent {
   documentation?: string;
 }
 
-export interface AgentConfig {
+interface AgentConfig {
   agents: Agent[];
 }

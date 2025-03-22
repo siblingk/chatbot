@@ -8,7 +8,7 @@ const LOCALE_COOKIE_NAME = "user_locale";
 
 export default getRequestConfig(async () => {
   // Intentar obtener el idioma de la cookie
-  let locale = "es"; // Idioma predeterminado
+  let locale = "en"; // Idioma predeterminado
 
   try {
     // Usar un bloque try-catch para manejar posibles errores al acceder a las cookies
@@ -24,7 +24,7 @@ export default getRequestConfig(async () => {
 
   // Cargar los mensajes para el idioma seleccionado
   try {
-    const messages = (await import(`../../messages/${locale}.json`)).default;
+    const messages = (await import(`./${locale}.json`)).default;
     return { locale, messages };
   } catch (error) {
     // Si hay un error al cargar los mensajes, volvemos al idioma predeterminado
@@ -32,7 +32,7 @@ export default getRequestConfig(async () => {
       `Error al cargar los mensajes para el idioma ${locale}:`,
       error
     );
-    const defaultMessages = (await import(`../../messages/es.json`)).default;
-    return { locale: "es", messages: defaultMessages };
+    const defaultMessages = (await import(`./en.json`)).default;
+    return { locale: "en", messages: defaultMessages };
   }
 });

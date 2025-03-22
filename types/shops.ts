@@ -14,7 +14,7 @@ export interface Shop {
   updated_at: string;
 }
 
-export type ShopFormData = Omit<Shop, "id" | "created_at" | "updated_at">;
+type ShopFormData = Omit<Shop, "id" | "created_at" | "updated_at">;
 
 export type ShopActionState = {
   errors?: {

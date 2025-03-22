@@ -5,10 +5,6 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/utils/supabase/server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserManagement } from "@/components/settings/user-management";
-import { UserShopAccess } from "@/components/settings/user-shop-access";
-import { getUsers } from "@/app/actions/users";
-import { getUserOrganizations } from "@/app/actions/organizations";
 
 export const metadata: Metadata = {
   title: "Configuración",
@@ -42,10 +38,6 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  // Obtener datos para componentes
-  const users = await getUsers();
-  const organizations = await getUserOrganizations();
-
   return (
     <div className="container py-10">
       <h1 className="text-3xl font-bold mb-8">{t("settings.title")}</h1>
@@ -58,14 +50,6 @@ export default async function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="system">{t("settings.system")}</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="users">
-          <UserManagement initialUsers={users} />
-        </TabsContent>
-
-        <TabsContent value="user-shop-access">
-          <UserShopAccess users={users} organizations={organizations} />
-        </TabsContent>
 
         <TabsContent value="system">
           <div className="border rounded-lg p-6">

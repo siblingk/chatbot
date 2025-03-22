@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  createShop,
   deleteShop,
   assignShopToOrganization,
 } from "@/app/actions/organizations";
@@ -15,19 +14,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -46,23 +35,28 @@ import {
   CheckCircle,
   AlertCircle,
   MapPin,
-  InfoIcon,
   Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useUserRole } from "@/hooks/useUserRole";
+import { ShopForm } from "@/components/shops/shop-form";
 
 interface OrganizationShopsProps {
   organizationId: string;
-  isAdmin: boolean;
 }
 
-export function OrganizationShops({
-  organizationId,
-  isAdmin,
-}: OrganizationShopsProps) {
+export function OrganizationShops({ organizationId }: OrganizationShopsProps) {
   const t = useTranslations();
   const [shops, setShops] = useState<Shop[]>([]);
   const [unassignedShops, setUnassignedShops] = useState<Shop[]>([]);
@@ -70,15 +64,12 @@ export function OrganizationShops({
   const [unassignedSearchTerm, setUnassignedSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [unassignedLoading, setUnassignedLoading] = useState(true);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newShopName, setNewShopName] = useState("");
-  const [newShopLocation, setNewShopLocation] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAssigning, setIsAssigning] = useState<string | null>(null);
   const [deleteConfirmShopId, setDeleteConfirmShopId] = useState<string | null>(
     null
   );
   const router = useRouter();
+  const { isAdmin } = useUserRole();
 
   useEffect(() => {
     async function fetchShops() {
@@ -139,39 +130,6 @@ export function OrganizationShops({
       shop.name?.toLowerCase().includes(unassignedSearchTerm.toLowerCase()) ||
       shop.location?.toLowerCase().includes(unassignedSearchTerm.toLowerCase())
   );
-
-  const handleAddShop = async () => {
-    if (!newShopName) {
-      toast.error("Por favor ingresa un nombre para el taller");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const result = await createShop(
-        organizationId,
-        newShopName,
-        newShopLocation || "Sin ubicación"
-      );
-
-      if (result.success) {
-        toast.success("Taller creado correctamente");
-        setAddDialogOpen(false);
-        setNewShopName("");
-        setNewShopLocation("");
-
-        // Recargar la página para mostrar el nuevo taller
-        router.refresh();
-      } else {
-        toast.error(result.error || "Error al crear el taller");
-      }
-    } catch (error: unknown) {
-      toast.error("Error al crear el taller");
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleDeleteShop = async (shopId: string) => {
     try {
@@ -257,120 +215,156 @@ export function OrganizationShops({
               {t("organizations.shopsManagement.description")}
             </CardDescription>
           </div>
-          {isAdmin && (
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("organizations.shopsManagement.addShopButton")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {t("organizations.shopsManagement.addShopTitle")}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {t("organizations.shopsManagement.addShopDescription")}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <label htmlFor="name" className="font-medium text-sm">
-                      {t("shops.shopName")}
-                    </label>
-                    <Input
-                      id="name"
-                      placeholder={t("shops.shopName")}
-                      value={newShopName}
-                      onChange={(e) => setNewShopName(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label
-                      htmlFor="location"
-                      className="font-medium text-sm flex items-center gap-1"
-                    >
-                      <MapPin className="h-3.5 w-3.5" />
-                      {t("location")}
-                    </label>
-                    <Input
-                      id="location"
-                      placeholder={t("shops.shopLocation")}
-                      value={newShopLocation}
-                      onChange={(e) => setNewShopLocation(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setAddDialogOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    {t("shops.cancel")}
-                  </Button>
-                  <Button onClick={handleAddShop} disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {t("shops.creating")}
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        {t("shops.create")}
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                {t("organizations.shopsManagement.addShopButton")}
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>{t("shops.createShop")}</SheetTitle>
+                <SheetDescription>{t("shops.createShopDesc")}</SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <ShopForm organizationId={organizationId} />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="assigned">
-          <TabsList className="mb-4">
-            <TabsTrigger value="assigned">
-              {t("shops.assignedShops")}
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger value="unassigned">
-                {t("shops.unassignedShops")}
-              </TabsTrigger>
-            )}
-          </TabsList>
+        <div className="relative mb-4">
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+            size={18}
+          />
+          <Input
+            placeholder={t("organizations.shopsManagement.searchShops")}
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
 
-          <TabsContent value="assigned">
+        {loading ? (
+          <div className="flex justify-center items-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filteredShops.length === 0 ? (
+          <div className="text-center py-10">
+            <StoreIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-medium">
+              {t("shops.noShopsInOrganization")}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {isAdmin ? t("shops.addShopsInfo") : t("shops.noShopsAssigned")}
+            </p>
+          </div>
+        ) : (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("name")}</TableHead>
+                  <TableHead>{t("location")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  {isAdmin && (
+                    <TableHead className="w-[80px] text-right">
+                      {t("organizations.shopsManagement.actions")}
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredShops.map((shop) => (
+                  <TableRow
+                    key={shop.id}
+                    className={cn(
+                      "hover:bg-muted/30 group",
+                      deleteConfirmShopId === shop.id && "bg-muted/50"
+                    )}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <Store className="h-4 w-4 mr-2" />
+                        {shop.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        {shop.location || t("shops.noLocation")}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(shop.status)}</TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        {deleteConfirmShopId === shop.id ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeleteConfirmShopId(null)}
+                            >
+                              {t("shops.cancel")}
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteShop(shop.id)}
+                            >
+                              {t("shops.delete")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                            onClick={() => setDeleteConfirmShopId(shop.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="unassigned">
             <div className="relative mb-4">
               <Search
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
                 size={18}
               />
               <Input
-                placeholder={t("organizations.shopsManagement.searchShops")}
+                placeholder={t("shops.searchUnassignedShops")}
                 className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={unassignedSearchTerm}
+                onChange={(e) => setUnassignedSearchTerm(e.target.value)}
               />
             </div>
 
-            {loading ? (
+            {unassignedLoading ? (
               <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : filteredShops.length === 0 ? (
+            ) : filteredUnassignedShops.length === 0 ? (
               <div className="text-center py-10">
-                <StoreIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+                <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-medium">
-                  {t("shops.noShopsInOrganization")}
+                  {t("shops.noUnassignedShops")}
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {isAdmin
-                    ? t("shops.addShopsInfo")
-                    : t("shops.noShopsAssigned")}
+                  {t("shops.allShopsAssigned")}
                 </p>
               </div>
             ) : (
@@ -381,22 +375,14 @@ export function OrganizationShops({
                       <TableHead>{t("name")}</TableHead>
                       <TableHead>{t("location")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
-                      {isAdmin && (
-                        <TableHead className="w-[80px] text-right">
-                          {t("organizations.shopsManagement.actions")}
-                        </TableHead>
-                      )}
+                      <TableHead className="text-right">
+                        {t("organizations.shopsManagement.actions")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredShops.map((shop) => (
-                      <TableRow
-                        key={shop.id}
-                        className={cn(
-                          "hover:bg-muted/30 group",
-                          deleteConfirmShopId === shop.id && "bg-muted/50"
-                        )}
-                      >
+                    {filteredUnassignedShops.map((shop) => (
+                      <TableRow key={shop.id} className="hover:bg-muted/30">
                         <TableCell className="font-medium">
                           <div className="flex items-center">
                             <Store className="h-4 w-4 mr-2" />
@@ -410,37 +396,22 @@ export function OrganizationShops({
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(shop.status)}</TableCell>
-                        {isAdmin && (
-                          <TableCell className="text-right">
-                            {deleteConfirmShopId === shop.id ? (
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setDeleteConfirmShopId(null)}
-                                >
-                                  {t("shops.cancel")}
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleDeleteShop(shop.id)}
-                                >
-                                  {t("shops.delete")}
-                                </Button>
-                              </div>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            disabled={isAssigning === shop.id}
+                            onClick={() => handleAssignShop(shop.id)}
+                          >
+                            {isAssigning === shop.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                             ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
-                                onClick={() => setDeleteConfirmShopId(shop.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                              </Button>
+                              <LinkIcon className="h-4 w-4 mr-1" />
                             )}
-                          </TableCell>
-                        )}
+                            {t("shops.assign")}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -448,108 +419,8 @@ export function OrganizationShops({
               </div>
             )}
           </TabsContent>
-
-          {isAdmin && (
-            <TabsContent value="unassigned">
-              <div className="relative mb-4">
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                  size={18}
-                />
-                <Input
-                  placeholder={t("shops.searchUnassignedShops")}
-                  className="pl-10"
-                  value={unassignedSearchTerm}
-                  onChange={(e) => setUnassignedSearchTerm(e.target.value)}
-                />
-              </div>
-
-              {unassignedLoading ? (
-                <div className="flex justify-center items-center py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : filteredUnassignedShops.length === 0 ? (
-                <div className="text-center py-10">
-                  <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-medium">
-                    {t("shops.noUnassignedShops")}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {t("shops.allShopsAssigned")}
-                  </p>
-                </div>
-              ) : (
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("name")}</TableHead>
-                        <TableHead>{t("location")}</TableHead>
-                        <TableHead>{t("status")}</TableHead>
-                        <TableHead className="text-right">
-                          {t("organizations.shopsManagement.actions")}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUnassignedShops.map((shop) => (
-                        <TableRow key={shop.id} className="hover:bg-muted/30">
-                          <TableCell className="font-medium">
-                            <div className="flex items-center">
-                              <Store className="h-4 w-4 mr-2" />
-                              {shop.name}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                              {shop.location || t("shops.noLocation")}
-                            </div>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(shop.status)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1"
-                              disabled={isAssigning === shop.id}
-                              onClick={() => handleAssignShop(shop.id)}
-                            >
-                              {isAssigning === shop.id ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <LinkIcon className="h-4 w-4 mr-1" />
-                              )}
-                              {t("shops.assign")}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-          )}
-        </Tabs>
+        )}
       </CardContent>
-      <CardFooter className="py-3 flex items-center justify-between text-xs text-muted-foreground border-t">
-        <div>
-          <InfoIcon className="h-3 w-3 inline mr-1" />
-          {t("shops.totalAssigned", { count: shops.length })}
-          {isAdmin &&
-            t("shops.totalUnassigned", { count: unassignedShops.length })}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.refresh()}
-          className="text-xs"
-        >
-          <Loader2 className="h-3 w-3 mr-1" />
-          {t("shops.refresh")}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }

@@ -151,76 +151,85 @@ export async function sendMessage(
   message: string,
   prompt?: Record<string, unknown>,
   urlParams?: Record<string, unknown>
-) {
+): Promise<{ success: boolean; message: string }> {
   // Obtener el usuario actual
-  const currentUser = await getCurrentUser();
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  // Variables para el webhook
-  let isAdmin = false;
-  let isShop = false;
-  let userRole = "user"; // Por defecto, asumimos que es un usuario normal
-
-  console.log("sendMessage - Usuario actual:", currentUser?.id);
-  console.log("sendMessage - URL Params:", JSON.stringify(urlParams));
-  console.log("sendMessage - Prompt:", JSON.stringify(prompt));
-
-  // Determinar el rol del usuario usando la misma lógica que useUserRole
-  if (currentUser) {
-    try {
-      // Usar getUserRole para obtener el rol del usuario
-      const userRoleInfo = await getUserRole();
-
-      console.log(
-        "sendMessage - Información de rol obtenida:",
-        JSON.stringify(userRoleInfo)
-      );
-
-      userRole = userRoleInfo.role || "user";
-      isAdmin = userRoleInfo.role === "admin";
-      isShop = userRoleInfo.role === "shop";
-
-      console.log("sendMessage - Rol del usuario:", userRole);
-      console.log("sendMessage - Es admin:", isAdmin);
-      console.log("sendMessage - Es shop:", isShop);
-    } catch (error) {
-      console.error("Error al obtener el rol del usuario:", error);
-    }
-  } else {
-    console.log("sendMessage - No hay usuario autenticado");
-  }
-
-  // PASO 1: Determinar el webhook URL basado ÚNICAMENTE en el rol del usuario
-  // Esta es la parte más importante y no debe ser modificada después
-  let webhookUrl;
-  if (isShop) {
-    webhookUrl = process.env.SHOP_WEBHOOK_URL;
-    console.log(
-      "sendMessage - Usuario es shop, usando SHOP_WEBHOOK_URL:",
-      webhookUrl
-    );
-  } else if (isAdmin) {
-    webhookUrl = process.env.ADMIN_WEBHOOK_URL || process.env.WEBHOOK_URL;
-    console.log(
-      "sendMessage - Usuario es admin, usando ADMIN_WEBHOOK_URL o WEBHOOK_URL:",
-      webhookUrl
-    );
-  } else {
-    webhookUrl = process.env.WEBHOOK_URL;
-    console.log(
-      "sendMessage - Usuario es user, usando WEBHOOK_URL:",
-      webhookUrl
-    );
-  }
-
-  if (!webhookUrl) {
-    throw new Error(
-      "URL del webhook no está definida en las variables de entorno"
-    );
-  }
-
   try {
+    const currentUser = await getCurrentUser();
+    const cookieStore = cookies();
+    const supabase = await createClient(cookieStore);
+
+    // Variables para el webhook
+    let isAdmin = false;
+    let isSuperAdmin = false;
+    let isGeneralLead = false;
+    let userRole = "user"; // Por defecto, asumimos que es un usuario normal
+
+    console.log("sendMessage - Usuario actual:", currentUser?.id);
+    console.log("sendMessage - URL Params:", JSON.stringify(urlParams));
+    console.log("sendMessage - Prompt:", JSON.stringify(prompt));
+
+    // Determinar el rol del usuario usando la misma lógica que useUserRole
+    if (currentUser) {
+      try {
+        // Usar getUserRole para obtener el rol del usuario
+        const userRoleInfo = await getUserRole();
+
+        console.log(
+          "sendMessage - Información de rol obtenida:",
+          JSON.stringify(userRoleInfo)
+        );
+
+        userRole = userRoleInfo.role || "user";
+        isAdmin = userRoleInfo.role === "admin";
+        isSuperAdmin = userRoleInfo.role === "super_admin";
+        isGeneralLead = userRoleInfo.role === "general_lead";
+
+        console.log("sendMessage - Rol del usuario:", userRole);
+        console.log("sendMessage - Es admin:", isAdmin);
+        console.log("sendMessage - Es super_admin:", isSuperAdmin);
+        console.log("sendMessage - Es general_lead:", isGeneralLead);
+      } catch (error) {
+        console.error("Error al obtener el rol del usuario:", error);
+      }
+    } else {
+      console.log("sendMessage - No hay usuario autenticado");
+    }
+
+    // PASO 1: Determinar el webhook URL basado ÚNICAMENTE en el rol del usuario
+    // Esta es la parte más importante y no debe ser modificada después
+    let webhookUrl;
+    if (isGeneralLead) {
+      webhookUrl = process.env.LEAD_WEBHOOK_URL || process.env.WEBHOOK_URL;
+      console.log(
+        "sendMessage - Usuario es general_lead, usando LEAD_WEBHOOK_URL:",
+        webhookUrl
+      );
+    } else if (isAdmin || isSuperAdmin) {
+      webhookUrl = process.env.ADMIN_WEBHOOK_URL || process.env.WEBHOOK_URL;
+      console.log(
+        "sendMessage - Usuario es admin o super_admin, usando ADMIN_WEBHOOK_URL:",
+        webhookUrl
+      );
+    } else if (userRole === "shop") {
+      webhookUrl = process.env.SHOP_WEBHOOK_URL || process.env.WEBHOOK_URL;
+      console.log(
+        "sendMessage - Usuario es shop, usando SHOP_WEBHOOK_URL:",
+        webhookUrl
+      );
+    } else {
+      webhookUrl = process.env.WEBHOOK_URL;
+      console.log(
+        "sendMessage - Usuario es user, usando WEBHOOK_URL:",
+        webhookUrl
+      );
+    }
+
+    if (!webhookUrl) {
+      throw new Error(
+        "URL del webhook no está definida en las variables de entorno"
+      );
+    }
+
     // PASO 2: Crear el objeto de solicitud webhook
     const webhookRequest: WebhookRequest = {
       sessionId,
@@ -263,6 +272,7 @@ export async function sendMessage(
           // Verificar compatibilidad de target_role con el rol del usuario
           if (
             !isAdmin &&
+            !isSuperAdmin &&
             agent.target_role !== "both" &&
             agent.target_role !== userRole
           ) {
@@ -302,6 +312,7 @@ export async function sendMessage(
           // Verificar compatibilidad de target_role con el rol del usuario
           if (
             !isAdmin &&
+            !isSuperAdmin &&
             agent.target_role !== "both" &&
             agent.target_role !== userRole
           ) {
@@ -326,7 +337,7 @@ export async function sendMessage(
         userRole
       );
 
-      if (isShop) {
+      if (userRole === "shop") {
         // IMPORTANTE: Buscar primero un agente con target_role exactamente igual a "shop"
         const { data: exactShopAgents } = await supabase
           .from("agents")
@@ -510,10 +521,20 @@ export async function sendMessage(
     }
   } catch (error) {
     console.error("Error al enviar mensaje:", error);
-    const t = await getTranslations("chat");
+
+    // Asegurarnos de devolver un objeto con la estructura esperada
+    let errorMessage = "Error al procesar tu mensaje.";
+
+    try {
+      const t = await getTranslations("chat");
+      errorMessage = t("errorMessage") || errorMessage;
+    } catch (translationError) {
+      console.error("Error al obtener traducción:", translationError);
+    }
+
     return {
       success: false,
-      message: t("errorMessage") || "Error al procesar tu mensaje.",
+      message: errorMessage,
     };
   }
 }

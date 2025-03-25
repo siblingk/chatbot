@@ -90,7 +90,10 @@ export function MessageInput({
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t("placeholder")}
             autoComplete="off"
-            className="h-12 pl-5 pr-12 rounded-full shadow-sm transition-all duration-200 border-muted-foreground/10 focus:border-primary/30 bg-background/90 focus:bg-background"
+            className="h-12 pl-5 pr-12 rounded-full shadow-sm transition-all duration-200 
+              border-border/30 focus:border-primary/30 
+              bg-background/90 focus:bg-background 
+              focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0"
             disabled={isSubmitting || disabled}
           />
 
@@ -99,7 +102,7 @@ export function MessageInput({
               <Button
                 type="submit"
                 size="icon"
-                className="h-8 w-8 bg-primary rounded-full hover:bg-primary/90"
+                className="h-8 w-8 bg-primary rounded-full hover:bg-primary/90 shadow-sm"
                 disabled={isSubmitting || disabled}
               >
                 <Forward className="h-4 w-4 text-primary-foreground" />
@@ -109,6 +112,17 @@ export function MessageInput({
           )}
         </div>
       </form>
+
+      {/* Indicador de comando rápido */}
+      <div className="mt-2 text-[10px] text-muted-foreground/60 text-center px-4">
+        <span className="inline-flex items-center">
+          Presiona{" "}
+          <kbd className="mx-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[9px] border border-border/20">
+            /
+          </kbd>{" "}
+          para enfocar
+        </span>
+      </div>
     </div>
   );
 }

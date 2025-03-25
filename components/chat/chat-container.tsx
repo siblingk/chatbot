@@ -1,8 +1,7 @@
 "use client";
-
 import { MessageInput } from "@/components/chat/message-input";
 import { Message } from "@/types/chat";
-import { Bot, User, ArrowDown } from "lucide-react";
+import { Bot, User, ArrowDown, AlertCircle } from "lucide-react";
 import {
   sendMessage,
   updateMessages,
@@ -12,12 +11,15 @@ import {
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { generateUUID } from "@/utils/uuid";
 import { cn } from "@/lib/utils";
 
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { AgentWelcomeCard } from "./agent-welcome-card";
+import { ChatDashboardOptions } from "./chat-dashboard-options";
+import { useUserRole } from "@/hooks/useUserRole";
+import { AgentSelector } from "./agent-selector";
+import { getAgents } from "@/app/actions/agents";
 
 interface ChatMessage {
   id: string;
@@ -64,8 +66,12 @@ export default function SharedChatContainer({
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<Message[]>([]);
+  const { role } = useUserRole();
 
   const isSessionMode = !!propSessionId;
+  const isGeneralLead = role === "general_lead";
+  const isAdminOrSuperAdmin = role === "admin" || role === "super_admin";
+  const isSuperAdmin = role === "super_admin";
 
   useEffect(() => {
     async function checkAuth() {
@@ -79,6 +85,24 @@ export default function SharedChatContainer({
     }
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    // Cargar los agentes al montar el componente
+    async function loadAgents() {
+      try {
+        const isAdminOrSuperAdmin = role === "admin" || role === "super_admin";
+        const onlyActive = !isAdminOrSuperAdmin;
+        const filterByRole = !isAdminOrSuperAdmin;
+        await getAgents(onlyActive, filterByRole);
+      } catch (error) {
+        console.error("Error al cargar agentes:", error);
+      }
+    }
+
+    if (isAuthenticated) {
+      loadAgents();
+    }
+  }, [isAuthenticated, role]);
 
   const getSessionAgentId = async () => {
     if (propAgentId) {
@@ -284,6 +308,93 @@ export default function SharedChatContainer({
     return params;
   };
 
+  // Función para enviar comandos desde botones
+  const sendCommand = (buttonText: string) => {
+    // Crear un mensaje de usuario con el texto del botón
+    const userMessage: Message = {
+      id: generateUUID(),
+      text: buttonText,
+      isUser: true,
+      timestamp: new Date(),
+      session_id: propSessionId || "",
+      input: buttonText,
+    };
+
+    // Enviar el mensaje al webhook como si el usuario lo hubiera escrito
+    const getCurrentSessionId = async () => {
+      if (isSessionMode && propSessionId) {
+        return propSessionId;
+      } else {
+        // Si no hay sessionId, crear uno nuevo
+        return await createNewSessionId();
+      }
+    };
+
+    // Añadir el mensaje a la conversación
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+
+    // Desplazamiento al enviar el mensaje
+    scrollToBottom();
+
+    // Iniciar proceso de envío de mensaje
+    setIsTyping(true);
+    setChatState("sending");
+
+    getCurrentSessionId().then((sessionId) => {
+      // Enviar el mensaje al webhook
+      sendMessage(sessionId, buttonText, undefined, getUrlParams())
+        .then(({ success, message: responseMessage }) => {
+          // Solo procedemos si la solicitud fue exitosa
+          if (success) {
+            // Crear un mensaje de bot con la respuesta
+            const botMessage: Message = {
+              id: generateUUID(),
+              text: responseMessage,
+              isUser: false,
+              timestamp: new Date(),
+              session_id: sessionId,
+              output: responseMessage,
+            };
+
+            // Añadir la respuesta del bot a la conversación
+            const updatedWithBotResponse = [...updatedMessages, botMessage];
+            setMessages(updatedWithBotResponse);
+            messagesRef.current = updatedWithBotResponse;
+
+            // Si no estamos en modo sesión, almacenar los mensajes en localStorage
+            if (!isSessionMode) {
+              updateMessages(updatedWithBotResponse);
+            }
+
+            // Si es un nuevo chat, actualizar la URL
+            if (!isSessionMode && !propSessionId) {
+              router.push(`/chat/${sessionId}`);
+            }
+
+            // Desplazamiento al recibir respuesta
+            scrollToBottom();
+            setChatState("idle");
+          } else {
+            // Manejo de error
+            setErrorMessage(responseMessage);
+            setChatState("error");
+            console.error("Error al enviar mensaje:", responseMessage);
+          }
+        })
+        .catch((error) => {
+          // Manejo de error de red u otros errores
+          setErrorMessage(t("errorSending") || "Error al enviar mensaje");
+          setChatState("error");
+          console.error("Error al enviar mensaje:", error);
+        })
+        .finally(() => {
+          setIsTyping(false);
+        });
+    });
+  };
+
+  // Función para manejar la entrada de texto
   const handleSubmit = async (formData: FormData) => {
     const messageText = formData.get("message");
     if (!messageText || typeof messageText !== "string" || !messageText.trim())
@@ -293,104 +404,8 @@ export default function SharedChatContainer({
     vibrate([40, 20, 40]);
     setErrorMessage(null);
 
-    const sessionId = isSessionMode
-      ? propSessionId!
-      : await createNewSessionId();
-
-    const newMessage: Message = {
-      id: generateUUID(),
-      text: messageText,
-      isUser: true,
-      timestamp: new Date(),
-      session_id: sessionId,
-      input: messageText,
-    };
-
-    const updatedMessages = [...messages, newMessage];
-    setMessages(updatedMessages);
-
-    // Desplazamiento al enviar un mensaje (mantener este scroll)
-    scrollToBottom();
-    // Segundo intento después de un breve retraso
-    setTimeout(scrollToBottom, 50);
-
-    setIsTyping(true);
-
-    const urlParams = getUrlParams();
-
-    if (!isSessionMode && isAuthenticated) {
-      router.prefetch(`/chat/${sessionId}`);
-    }
-
-    try {
-      const response = await sendMessage(
-        sessionId,
-        messageText,
-        undefined,
-        urlParams
-      );
-
-      if (response.success) {
-        vibrate([50, 30, 100]);
-
-        const botMessage: Message = {
-          id: generateUUID(),
-          text: response.message,
-          isUser: false,
-          timestamp: new Date(),
-          session_id: sessionId,
-          input: "",
-        };
-
-        setIsTyping(false);
-        setChatState("idle");
-
-        const messagesWithBot = [...updatedMessages, botMessage];
-        setMessages(messagesWithBot);
-
-        // Desplazamiento al recibir respuesta (mantener este scroll)
-        scrollToBottom();
-        // Segundo intento después de un breve retraso
-        setTimeout(scrollToBottom, 100);
-
-        await updateMessages(messagesWithBot);
-
-        if (!isSessionMode && isAuthenticated) {
-          router.replace(`/chat/${sessionId}`, { scroll: false });
-        }
-      } else {
-        vibrate([100, 50, 100, 50, 100]);
-        setIsTyping(false);
-        setChatState("error");
-        setErrorMessage(response.message || t("error"));
-      }
-    } catch (error) {
-      console.error("Error al enviar el mensaje:", error);
-      vibrate([100, 50, 100, 50, 100]);
-      setIsTyping(false);
-      setChatState("error");
-      setErrorMessage(t("errorMessage"));
-    }
-  };
-
-  const getStateText = () => {
-    switch (chatState) {
-      case "sending":
-        return t("sending");
-      case "error":
-        return errorMessage || t("error");
-      default:
-        return "";
-    }
-  };
-
-  const handleQuotationRequest = async () => {
-    const formData = new FormData();
-    formData.append(
-      "message",
-      t("quotationMessage") || "Quiero una cotización"
-    );
-    await handleSubmit(formData);
+    // Reutilizar la función sendCommand
+    sendCommand(messageText);
   };
 
   const hasUserMessages = messages.some((message) => message.isUser);
@@ -400,49 +415,59 @@ export default function SharedChatContainer({
   return (
     <div
       className={cn(
-        "flex flex-col h-full overflow-hidden bg-gradient-to-b from-background to-background/80 relative"
+        "relative flex h-full w-full flex-col overflow-hidden bg-background",
+        isSuperAdmin && "bg-background"
       )}
     >
+      {/* Contenedor principal del chat - mejorado para visualización fija */}
       <div
-        className="flex-1 max-h-[calc(100vh-5rem)] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent pb-24 scroll-smooth"
+        className={cn(
+          "flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted/20 scrollbar-track-transparent pb-36 scroll-smooth",
+          "relative h-[calc(100vh-10rem)]", // Altura fija calculada para evitar desbordamiento
+          isSuperAdmin ? "bg-background pt-2 px-4" : "p-4"
+        )}
         ref={scrollRef}
         style={{ overscrollBehavior: "contain" }}
       >
-        <div className="container mx-auto max-w-3xl">
-          <AgentWelcomeCard agentId={memoizedAgentId} />
-        </div>
+        {/* Mostrar AgentWelcomeCard solo si no es super_admin o si no hay mensajes */}
+        {(!isSuperAdmin || (isSuperAdmin && messages.length === 0)) && (
+          <div className="container mx-auto max-w-3xl">
+            <AgentWelcomeCard agentId={memoizedAgentId} />
+          </div>
+        )}
 
-        <div className="container max-w-3xl mx-auto space-y-6">
+        {/* Contenedor de mensajes con límite de ancho máximo para mejor legibilidad */}
+        <div className="container max-w-3xl mx-auto space-y-5">
           {messages.map((message, index) => (
             <div
               key={message.id}
               className={cn(
-                "flex items-start gap-3 mb-6 message",
+                "flex items-start gap-3 mb-4 message",
                 message.isUser ? "justify-end" : "justify-start",
                 index === messages.length - 1 ? "animate-fadeIn" : ""
               )}
             >
               <div
                 className={cn(
-                  "flex items-center justify-center w-7 h-7 rounded-full shrink-0 shadow-sm",
+                  "flex items-center justify-center w-6 h-6 rounded-full shrink-0",
                   message.isUser
                     ? "order-last bg-primary/90"
-                    : "bg-muted-foreground/20"
+                    : "bg-muted-foreground/10"
                 )}
               >
                 {message.isUser ? (
-                  <User className="w-3.5 h-3.5 text-primary-foreground" />
+                  <User className="w-3 h-3 text-primary-foreground" />
                 ) : (
-                  <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Bot className="w-3 h-3 text-muted-foreground" />
                 )}
               </div>
               <div className="space-y-1 max-w-[85%]">
                 <div
                   className={cn(
-                    "px-4 py-2.5 rounded-2xl text-sm shadow-sm",
+                    "px-3 py-2 rounded-xl text-sm",
                     message.isUser
-                      ? "bg-primary text-primary-foreground rounded-tr-none"
-                      : "bg-muted rounded-tl-none"
+                      ? "bg-primary text-primary-foreground rounded-tr-none shadow-sm"
+                      : "bg-muted rounded-tl-none shadow-sm"
                   )}
                 >
                   {message.isUser ? (
@@ -458,7 +483,7 @@ export default function SharedChatContainer({
                     />
                   )}
                 </div>
-                <div className="text-[10px] opacity-60 px-2">
+                <div className="text-[9px] opacity-60 px-2">
                   {new Date(message.timestamp).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -468,82 +493,146 @@ export default function SharedChatContainer({
             </div>
           ))}
 
+          {/* Indicador de escritura con mejor posicionamiento */}
           {isTyping && (
-            <div className="flex items-start gap-3 mb-6 mr-auto animate-fadeIn">
-              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-muted-foreground/20 shrink-0 shadow-sm">
-                <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+            <div className="flex items-start gap-3 message animate-fadeIn">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 bg-muted-foreground/10">
+                <Bot className="w-3 h-3 text-muted-foreground" />
               </div>
-              <div className="px-4 py-3 bg-muted rounded-2xl rounded-tl-none shadow-sm">
-                <div className="flex items-center space-x-1.5">
-                  <div
-                    className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
-                    style={{ animationDelay: "0ms" }}
-                  />
-                  <div
-                    className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
-                    style={{ animationDelay: "200ms" }}
-                  />
-                  <div
-                    className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
-                    style={{ animationDelay: "400ms" }}
-                  />
+              <div className="space-y-1">
+                <div className="px-3 py-2 rounded-xl bg-muted rounded-tl-none shadow-sm">
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
+
+          {chatState === "error" && errorMessage && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-md px-3 py-2 mt-4">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                <span>{errorMessage}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Botón de desplazamiento hacia abajo, mejorado visualmente */}
+          {showScrollButton && (
+            <button
+              onClick={scrollToBottom}
+              className="fixed bottom-24 right-6 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-primary/90 text-primary-foreground shadow-md hover:bg-primary transition-colors"
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Botón flotante para desplazarse al final */}
-      {showScrollButton && (
-        <button
-          onClick={scrollToBottom}
-          className="fixed bottom-24 right-4 z-10 p-2 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-200 animate-fadeIn"
-          aria-label="Desplazarse al final"
+      {/* Área de control inferior mejorada con gradiente más sutil */}
+      <div
+        className={cn(
+          "fixed bottom-0 left-0 right-0",
+          isSuperAdmin && "from-background pt-2"
+        )}
+      >
+        <div
+          className={cn(
+            "container px-2 mx-auto max-w-4xl pb-4 py-3",
+            isSuperAdmin && "max-w-4xl bg-background/90 backdrop-blur-sm"
+          )}
         >
-          <ArrowDown className="h-5 w-5" />
-        </button>
-      )}
+          {/* Panel de comandos siempre visible para super_admin */}
+          {role === "super_admin" && (
+            <div className="mb-2">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+                {/* Dashboard options para super admin */}
+                {isAuthenticated === true && (
+                  <div className="w-full md:flex-1">
+                    <AgentSelector
+                      currentAgentId={effectiveAgentId}
+                      onAgentChange={(agentId) => {
+                        setEffectiveAgentId(agentId);
+                        getSessionAgentId();
+                      }}
+                    />
+                    <ChatDashboardOptions
+                      onOptionSelected={(_, buttonText) => {
+                        sendCommand(buttonText);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-      {chatState === "error" && (
-        <div className="px-4 py-1.5 text-xs text-center text-destructive bg-destructive/10">
-          {getStateText()}
-        </div>
-      )}
+          {!hasUserMessages && role !== "super_admin" ? (
+            <>
+              {/* Si es admin normal (pero no super_admin), mostrar mensaje específico y selector de agentes */}
+              {role === "admin" && (
+                <div className="mb-4">
+                  <div className="bg-muted/50 rounded-lg p-4 text-center mb-2 shadow-sm">
+                    <h3 className="text-lg font-medium mb-2">
+                      {t("adminDashboard") || "Panel de Administración"}
+                    </h3>
+                    <p className="text-muted-foreground text-sm mb-3">
+                      {t("adminChatInfo") ||
+                        "Este chat está conectado al webhook de administración para gestionar el sistema."}
+                    </p>
 
-      <div className="fixed bottom-0 left-0 right-0  bg-gradient-to-t from-background via-background/95 to-transparent pt-6">
-        <div className="container px-2 mx-auto max-w-3xl pb-4">
-          {!hasUserMessages && !isSessionMode ? (
-            <div className="flex flex-col items-center px-4 mb-2 text-center">
-              <Button
-                onClick={() => {
-                  vibrate([40, 20, 40]);
-                  handleQuotationRequest();
-                }}
-                className="group relative overflow-hidden dark:bg-zinc-800/40 bg-zinc-50 dark:hover:bg-zinc-800/60 hover:bg-zinc-100/80 
-                px-12 py-6 rounded-lg backdrop-blur-xl
-                shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset,0_8px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_8px_20px_-4px_rgba(0,0,0,0.2)]
-                hover:shadow-[0_0_0_1px_rgba(0,0,0,0.08)_inset,0_12px_24px_-4px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset,0_12px_24px_-4px_rgba(0,0,0,0.3)]
-                active:scale-[0.98] transition-all duration-300"
-              >
-                <div className="relative flex items-center gap-3">
-                  <span className="relative z-10 text-[17px] font-medium tracking-[-0.01em] text-zinc-800 dark:text-zinc-200">
-                    {t("startQuotation") || "Iniciar cotización"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-[4px] h-[4px] rounded-full bg-[#07c167] shadow-[0_0_6px_rgba(7,193,103,0.4)] animate-pulse" />
+                    {/* Selector de agentes para administradores */}
+                    <AgentSelector
+                      currentAgentId={effectiveAgentId}
+                      onAgentChange={(agentId) => {
+                        setEffectiveAgentId(agentId);
+                        getSessionAgentId();
+                      }}
+                    />
                   </div>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </Button>
-            </div>
-          ) : (
+              )}
+
+              {/* Mostrar selector de agentes para todos los roles excepto admin, super_admin, general_lead y no autenticado */}
+              {!isAdminOrSuperAdmin &&
+                !isGeneralLead &&
+                isAuthenticated === true && (
+                  <div className="mb-3">
+                    <AgentSelector
+                      currentAgentId={effectiveAgentId}
+                      onAgentChange={(agentId) => {
+                        setEffectiveAgentId(agentId);
+                        getSessionAgentId();
+                      }}
+                    />
+                  </div>
+                )}
+
+              {/* Mostrar opciones del dashboard para roles que no sean super_admin, general_lead */}
+              {isAuthenticated === true &&
+                !isGeneralLead &&
+                //@ts-expect-error asdasd
+                role !== "super_admin" && (
+                  <div className="px-1 py-2 bg-muted/10 rounded-lg shadow-sm border border-border/10 mb-3">
+                    <ChatDashboardOptions
+                      onOptionSelected={(_, buttonText) => {
+                        sendCommand(buttonText);
+                      }}
+                    />
+                  </div>
+                )}
+            </>
+          ) : null}
+
+          {/* Ocultar la entrada de texto para super_admin */}
+          {role !== "super_admin" && (
             <MessageInput
-              onSubmit={async (formData) => {
-                vibrate([40, 20, 40]);
-                return handleSubmit(formData);
-              }}
-              disabled={chatState === "error"}
+              onSubmit={handleSubmit}
+              disabled={chatState === "error" || isTyping}
               className="pt-2"
             />
           )}

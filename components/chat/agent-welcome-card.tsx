@@ -95,9 +95,9 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
       className="transition-all duration-300"
       style={{ minHeight: CARD_MIN_HEIGHT, opacity: isLoading ? 0.7 : 1 }}
     >
-      <Card className="mb-6 text-justify  p-0 border-none shadow-none font-normal tracking-wide overflow-hidden h-full relative">
-        <CardHeader className="py-5 relative">
-          <CardTitle className="text-xl flex items-center justify-center  gap-3 mb-2 w-fit px-4 py-3 mx-auto rounded-full text-primary">
+      <Card className="mb-6 text-justify p-0 border border-border/10 shadow-sm rounded-xl font-normal tracking-wide overflow-hidden h-full relative">
+        <CardHeader className="py-4 relative bg-muted/10">
+          <CardTitle className="text-lg flex items-center justify-center gap-3 mb-0 w-fit px-4 py-2 mx-auto rounded-full text-primary">
             <motion.div
               animate={{
                 rotate: [0, 5, 0, -5, 0],
@@ -110,19 +110,19 @@ const AgentWelcomeCard = memo(function AgentWelcomeCardInner({
               }}
               className="relative"
             >
-              <Bot className="h-6 w-6 text-primary relative z-10" />
+              <Bot className="h-5 w-5 text-primary relative z-10" />
               <motion.div
                 className="absolute -inset-1 rounded-full bg-primary/10"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
             </motion.div>
-            <span className="font-semibold">{nameToShow}</span>
+            <span className="font-medium">{nameToShow}</span>
             <Sparkles className="h-4 w-4 text-primary/70" />
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="pt-4 text-sm relative bg-sidebar">
+        <CardContent className="pt-4 pb-6 px-6 text-sm relative bg-background">
           <MarkdownRenderer content={messageToShow} />
         </CardContent>
       </Card>

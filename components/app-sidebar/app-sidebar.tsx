@@ -26,44 +26,74 @@ export async function AppSidebar() {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id ?? "";
 
-  // Obtener el historial de chats
-  const history = await getChatHistory(userId);
+  // Obtener el rol del usuario
+  const { data: userRoleData } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .single();
 
-  // Agrupar mensajes por session_id
-  const groupedHistory =
-    history?.reduce((groups: { [key: string]: Message[] }, message) => {
-      const sessionId = message.session_id || "default";
-      if (!groups[sessionId]) {
-        groups[sessionId] = [];
-      }
-      // Insertar al inicio del array en lugar de al final
-      groups[sessionId].unshift(message);
-      return groups;
-    }, {}) || {};
+  const userRole = userRoleData?.role;
+  const isGeneralLead = userRole === "general_lead";
+  const isShop = userRole === "shop";
+  const isUser = userRole === "user";
+
+  // Obtener el historial de chats para todos los roles (excepto admin/super_admin)
+  let groupedHistory: { [key: string]: Message[] } = {};
+
+  if (userId) {
+    const history = await getChatHistory(userId);
+
+    // Agrupar mensajes por session_id
+    groupedHistory =
+      history?.reduce((groups: { [key: string]: Message[] }, message) => {
+        const sessionId = message.session_id || "default";
+        if (!groups[sessionId]) {
+          groups[sessionId] = [];
+        }
+        // Insertar al inicio del array en lugar de al final
+        groups[sessionId].unshift(message);
+        return groups;
+      }, {}) || {};
+  }
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader />
 
       <SidebarContent className="-mt-2">
-        <Collapsible defaultOpen className="group/collapsible">
-          <SidebarGroup>
-            <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex items-center w-full">
-                {t("sidebar.chatHistory")}
-                <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              {Object.keys(groupedHistory).length > 0 && (
-                <SidebarChatList
-                  groupedHistory={groupedHistory}
-                  userId={userId}
-                />
-              )}
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        {userId && (
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroup>
+              <SidebarGroupLabel asChild>
+                <CollapsibleTrigger className="flex items-center w-full">
+                  {isShop
+                    ? t("sidebar.shopCommands") || "Comandos de Tienda"
+                    : isUser
+                    ? t("sidebar.userHistory") || "Historial de Usuario"
+                    : t("sidebar.chatHistory")}
+                  <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent>
+                {Object.keys(groupedHistory).length > 0 ? (
+                  <SidebarChatList
+                    groupedHistory={groupedHistory}
+                    userId={userId}
+                    userRole={userRole}
+                  />
+                ) : (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    {isShop
+                      ? t("sidebar.noShopCommands") ||
+                        "No hay comandos recientes"
+                      : t("sidebar.noChats") || "No hay chats recientes"}
+                  </div>
+                )}
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        )}
       </SidebarContent>
 
       <SidebarFooter user={userData?.user || null} />

@@ -13,36 +13,28 @@ export async function getAgents(onlyActive = false, filterByRole = true) {
   console.log("getAgents - onlyActive:", onlyActive);
   console.log("getAgents - filterByRole:", filterByRole);
 
-  // Obtener el usuario actual y su rol
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    console.error("Error fetching user:", userError);
-    throw userError;
-  }
-
-  // Obtener el rol del usuario
+  // Obtener el usuario actual y su rol usando getUserRole
   let userRole = "user"; // Por defecto, asumimos que es un usuario normal
   let isAdmin = false;
+  let isSuperAdmin = false;
 
-  if (user) {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profileError && profile) {
-      userRole = profile.role;
-      isAdmin = profile.role === "admin";
-    }
+  try {
+    const userRoleInfo = await getUserRole();
+    userRole = userRoleInfo.role || "user";
+    isAdmin = userRole === "admin";
+    isSuperAdmin = userRole === "super_admin";
+  } catch (error) {
+    console.error("Error al obtener el rol del usuario:", error);
   }
 
+  // Consideramos administrador si es admin o super_admin
+  const isAdminOrSuperAdmin = isAdmin || isSuperAdmin;
+
   // Para depuración
-  console.log("getAgents - Usuario es admin:", isAdmin);
+  console.log(
+    "getAgents - Usuario es admin o super_admin:",
+    isAdminOrSuperAdmin
+  );
   console.log("getAgents - Rol del usuario:", userRole);
 
   // Consulta base
@@ -53,21 +45,22 @@ export async function getAgents(onlyActive = false, filterByRole = true) {
 
   // Si se solicita solo agentes activos y el usuario no es administrador, añadir el filtro
   // Los administradores siempre pueden ver todos los agentes, activos e inactivos
-  if (onlyActive && !isAdmin) {
+  if (onlyActive && !isAdminOrSuperAdmin) {
     query = query.eq("is_active", true);
     console.log("getAgents - Filtrando por agentes activos");
   }
 
-  // Si no es admin y se debe filtrar por rol, mostrar solo agentes compatibles con su rol
+  // Si no es admin/super_admin y se debe filtrar por rol, mostrar solo agentes compatibles con su rol
   // Los administradores siempre pueden ver todos los agentes, independientemente del rol
-  if (!isAdmin && filterByRole) {
-    // Usuarios con rol "user" ven solo agentes con target_role "user" o "both"
-    // Usuarios con rol "shop" ven solo agentes con target_role "shop" o "both"
+  if (!isAdminOrSuperAdmin && filterByRole) {
+    // Usuarios con rol específico ven solo agentes con target_role compatible con su rol o "both"
     query = query.or(`target_role.eq.${userRole},target_role.eq.both`);
     console.log(`getAgents - Filtrando por target_role: ${userRole} o both`);
-  } else if (isAdmin) {
+  } else if (isAdminOrSuperAdmin) {
     // Para administradores, NO aplicamos ningún filtro por target_role
-    console.log("getAgents - Admin: No se aplica filtro por target_role");
+    console.log(
+      "getAgents - Admin/SuperAdmin: No se aplica filtro por target_role"
+    );
   }
 
   const { data: agents, error } = await query;
@@ -197,46 +190,30 @@ export async function getAgentById(
 
   console.log("El agente con ID", agentId, "SÍ existe en la base de datos");
 
-  // Obtener el usuario actual y su rol
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    console.error("Error fetching user:", userError);
-    return null;
-  }
-
-  console.log("Usuario ID:", user?.id);
-
-  // Obtener el rol del usuario
+  // Obtener el usuario actual y su rol usando getUserRole
   let userRole = "user"; // Por defecto, asumimos que es un usuario normal
   let isAdmin = false;
+  let isSuperAdmin = false;
 
-  if (user) {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profileError && profile) {
-      userRole = profile.role;
-      isAdmin = profile.role === "admin";
-      console.log("Perfil encontrado - Rol:", profile.role);
-    } else {
-      console.log("Error al obtener perfil:", profileError);
-    }
+  try {
+    const userRoleInfo = await getUserRole();
+    userRole = userRoleInfo.role || "user";
+    isAdmin = userRole === "admin";
+    isSuperAdmin = userRole === "super_admin";
+  } catch (error) {
+    console.error("Error al obtener el rol del usuario:", error);
   }
 
-  console.log("Usuario es admin:", isAdmin);
+  // Consideramos administrador si es admin o super_admin
+  const isAdminOrSuperAdmin = isAdmin || isSuperAdmin;
+
+  console.log("Usuario es admin o super_admin:", isAdminOrSuperAdmin);
   console.log("Rol del usuario:", userRole);
 
   // SIMPLIFICACIÓN: Para administradores o cuando se ignora el estado activo, obtener el agente directamente
-  if (isAdmin || ignoreActiveStatus) {
+  if (isAdminOrSuperAdmin || ignoreActiveStatus) {
     console.log(
-      "Usuario es admin o se ignora el estado activo - Obteniendo agente sin filtros"
+      "Usuario es admin/super_admin o se ignora el estado activo - Obteniendo agente sin filtros"
     );
 
     // Obtener el agente completo directamente sin filtros
@@ -310,6 +287,11 @@ const getCachedUserPreferredAgent = unstable_cache(
     console.log("Agent ID proporcionado:", agentId);
     console.log("Rol de usuario proporcionado:", userRole);
 
+    // Verificar si el usuario es admin o super_admin
+    const isAdmin = userRole === "admin";
+    const isSuperAdmin = userRole === "super_admin";
+    const isAdminOrSuperAdmin = isAdmin || isSuperAdmin;
+
     // PRIORIDAD 1: Si hay un agentId específico, usarlo directamente
     if (agentId) {
       console.log("Buscando agente específico con ID:", agentId);
@@ -324,12 +306,24 @@ const getCachedUserPreferredAgent = unstable_cache(
       if (error) {
         console.error("Error al buscar agente por ID:", error);
       } else if (agent) {
-        // Verificar si el agente es compatible con el rol del usuario
+        // Los administradores pueden usar cualquier agente sin restricciones
+        if (isAdminOrSuperAdmin) {
+          console.log(
+            "Usuario es admin/super_admin - Puede usar cualquier agente"
+          );
+          console.log("Agente específico encontrado:", agent.name);
+          console.log("=== FIN getCachedUserPreferredAgent ===");
+          return agent;
+        }
+
+        // Para usuarios normales, verificar si el agente es compatible con su rol
         const isShop = userRole === "shop";
+        const isGeneralLead = userRole === "general_lead";
         const isCompatible =
           agent.target_role === "both" ||
           (isShop && agent.target_role === "shop") ||
-          (!isShop && agent.target_role === "user");
+          (isGeneralLead && agent.target_role === "general_lead") ||
+          (!isShop && !isGeneralLead && agent.target_role === "user");
 
         console.log("Agente específico encontrado:", agent.name);
         console.log("Rol objetivo del agente:", agent.target_role);
@@ -351,11 +345,26 @@ const getCachedUserPreferredAgent = unstable_cache(
 
     // Si no se encontró un agente específico, buscar uno predeterminado para el rol
     const isShop = userRole === "shop";
+    const isGeneralLead = userRole === "general_lead";
     let query = supabaseClient.from("agents").select("*").eq("is_active", true);
 
-    if (isShop) {
+    // Si es admin/super_admin, devolver cualquier agente activo
+    if (isAdminOrSuperAdmin) {
+      const { data: adminAgents, error: adminError } = await query.limit(1);
+      if (!adminError && adminAgents && adminAgents.length > 0) {
+        console.log(
+          "Agente para admin/super_admin encontrado:",
+          adminAgents[0].name
+        );
+        console.log("=== FIN getCachedUserPreferredAgent ===");
+        return adminAgents[0];
+      }
+    } else if (isShop) {
       // Para tiendas, buscar primero agentes específicos para tiendas
       query = query.eq("target_role", "shop");
+    } else if (isGeneralLead) {
+      // Para general_lead, buscar agentes específicos para leads
+      query = query.eq("target_role", "general_lead");
     } else {
       // Para usuarios normales, buscar primero agentes específicos para usuarios
       query = query.eq("target_role", "user");
@@ -366,7 +375,7 @@ const getCachedUserPreferredAgent = unstable_cache(
     if (!specificError && specificAgents && specificAgents.length > 0) {
       console.log(
         `Agente predeterminado para ${
-          isShop ? "tienda" : "usuario"
+          isShop ? "tienda" : isGeneralLead ? "general_lead" : "usuario"
         } encontrado:`,
         specificAgents[0].name
       );
@@ -384,7 +393,7 @@ const getCachedUserPreferredAgent = unstable_cache(
 
     if (!bothError && bothAgents && bothAgents.length > 0) {
       console.log(
-        "Agente predeterminado para ambos roles encontrado:",
+        "Agente predeterminado para todos los roles encontrado:",
         bothAgents[0].name
       );
       console.log("=== FIN getCachedUserPreferredAgent ===");

@@ -10,6 +10,9 @@ import {
   Check,
   X,
   Plus,
+  MessageSquare,
+  Store,
+  User,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -29,15 +32,18 @@ import { deleteChatSession, updateChatTitle } from "@/app/actions/chat";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Message } from "@/types/chat";
+import { cn } from "@/lib/utils";
 
 interface SidebarChatListProps {
   groupedHistory: { [key: string]: Message[] };
   userId: string;
+  userRole?: string | null;
 }
 
 export function SidebarChatList({
   groupedHistory,
   userId,
+  userRole,
 }: SidebarChatListProps) {
   const t = useTranslations();
   const router = useRouter();
@@ -45,6 +51,34 @@ export function SidebarChatList({
   const [newTitle, setNewTitle] = useState("");
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+
+  // Función para obtener el icono según el rol de usuario
+  const getIconByRole = () => {
+    switch (userRole) {
+      case "shop":
+        return <Store className="h-4 w-4" />;
+      case "user":
+        return <User className="h-4 w-4" />;
+      case "general_lead":
+        return <Car className="h-4 w-4" />;
+      default:
+        return <MessageSquare className="h-4 w-4" />;
+    }
+  };
+
+  // Función para obtener clases de estilo según el rol
+  const getRoleStyles = () => {
+    switch (userRole) {
+      case "shop":
+        return "text-green-500 group-hover:text-green-600";
+      case "user":
+        return "text-blue-500 group-hover:text-blue-600";
+      case "general_lead":
+        return "text-amber-500 group-hover:text-amber-600";
+      default:
+        return "text-muted-foreground group-hover:text-foreground";
+    }
+  };
 
   // Función para eliminar una sesión de chat
   const handleDeleteChat = async (sessionId: string) => {
@@ -119,7 +153,9 @@ export function SidebarChatList({
                     className={isCollapsed ? "" : "pr-8"}
                   >
                     <Link href={`/chat/${sessionId}`}>
-                      <Car className="h-4 w-4" />
+                      <span className={cn("flex-shrink-0", getRoleStyles())}>
+                        {getIconByRole()}
+                      </span>
                       <span className="truncate">{chatTitle}</span>
                     </Link>
                   </SidebarMenuButton>

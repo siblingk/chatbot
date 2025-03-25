@@ -8,22 +8,35 @@ export function useUserRole() {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  console.log(role);
-
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchUserRole() {
       try {
         const { role: userRole } = await getUserRole();
-        setRole(userRole);
+
+        if (isMounted) {
+          console.log("useUserRole - Role obtenido:", userRole);
+          setRole(userRole);
+        }
       } catch (error) {
         console.error("Error in useUserRole:", error);
-        setRole(null);
+        if (isMounted) {
+          setRole(null);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchUserRole();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return {
@@ -34,5 +47,6 @@ export function useUserRole() {
     isColaborador: role === "colaborador",
     isUser: role === "user",
     isShop: role === "shop",
+    isGeneralLead: role === "general_lead",
   };
 }

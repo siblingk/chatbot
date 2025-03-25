@@ -10,7 +10,7 @@ export interface Message {
   title?: string;
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   output: string;
   response?: string;
 }
@@ -34,7 +34,7 @@ export type ChatStatus =
   | "quote"
   | "invoice";
 
-interface ChatLead {
+export interface ChatLead {
   id: string;
   session_id: string;
   user_id: string;
@@ -57,6 +57,18 @@ interface ChatLead {
   invoice_data?: Record<string, unknown>;
   invoice_date?: Date;
 
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Interfaz para las opciones del dashboard de chat
+export interface ChatDashboardOption {
+  id: string;
+  button_text: string;
+  response_text: string;
+  icon_name: string;
+  order_index: number;
+  is_active: boolean;
   created_at: Date;
   updated_at: Date;
 }

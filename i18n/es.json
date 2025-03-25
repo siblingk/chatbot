@@ -386,6 +386,7 @@
     "openInNewTab": "Abrir en nueva pestaña",
     "urlCopied": "¡URL copiada al portapapeles!",
     "agentNotActive": "El agente seleccionado no está activo actualmente.",
+    "agentNotAvailableForRole": "Este agente no está disponible para tu rol.",
     "resetConversation": "Reiniciar conversación",
     "goBack": "Regresar",
     "moreSettings": "Más Ajustes",
@@ -635,6 +636,7 @@
     "quotationMessage": "Quiero una cotización para un trabajo de reparación.",
     "agentNotActive": "El agente seleccionado no está activo actualmente.",
     "agentNotFound": "Agente no encontrado.",
+    "agentNotAvailableForRole": "Este agente no está disponible para tu rol.",
     "adminViewingInactiveAgent": "ADVERTENCIA: Estás viendo un agente inactivo (solo visible para administradores).",
     "resetConversation": "Reiniciar conversación",
     "noAgentsAvailable": "No hay agentes disponibles para asistirte en este momento.",
@@ -644,7 +646,11 @@
     "prequote": "Pre-Cotización",
     "appointment": "Cita",
     "quote": "Cotización",
-    "invoice": "Factura"
+    "invoice": "Factura",
+    "selectAgent": "Seleccionar agente",
+    "adminDashboard": "Panel de Administración",
+    "adminChatInfo": "Este chat está conectado al webhook de administración para gestionar el sistema.",
+    "errorSending": "Error al enviar mensaje"
   },
   "shops": {
     "title": "Talleres",
